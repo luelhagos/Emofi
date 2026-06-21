@@ -264,9 +264,14 @@ def main(args, configs):
                     else:
                         losses = [l.item() for l in (losses_1+tuple([torch.zeros(1).to(device) for _ in range(3)]))]
                     message1 = "Step {}/{}, ".format(step, total_step)
-                    message2 = "Total Loss: {:.4f}, Mel Loss: {:.4f}, Pitch Loss: {:.4f}, Energy Loss: {:.4f}, Duration Loss: {:.4f}, Adversarial_D_s Loss: {:.4f}, Adversarial_D_t Loss: {:.4f}, D_s Loss: {:.4f}, D_t Loss: {:.4f}, cls Loss: {:.4f}".format(
-                        *losses
-                    )
+                    ce_e = emotion_ce_loss.item()   if emotion_ce_loss   is not None else 0.0
+                    ce_i = intensity_ce_loss.item() if intensity_ce_loss is not None else 0.0
+                    adv  = adv_g_loss.item()        if adv_g_loss        is not None else 0.0
+                    message2 = ("Total: {:.4f}, Mel: {:.4f}, Pitch: {:.4f}, Energy: {:.4f}, "
+                                "Duration: {:.4f}, Emotion-CE: {:.4f}, Intensity-CE: {:.4f}, "
+                                "Adv: {:.4f}").format(
+                        total_loss.item(), losses[1], losses[2], losses[3], losses[4],
+                        ce_e, ce_i, adv)
 
                     with open(os.path.join(train_log_path, "log.txt"), "a") as f:
                         f.write(message1 + message2 + "\n")

@@ -36,10 +36,6 @@ def load_pretrained(model, ckpt_path):
     print(f"[load_pretrained] {ckpt_path}")
     print(f"  loaded:               {len(loaded)} keys")
     print(f"  skipped (not in tgt): {len(skipped_missing)} keys")
-    for k in skipped_missing[:5]:
-        print(f"    - {k}")
-    if len(skipped_missing) > 5:
-        print(f"    ... +{len(skipped_missing)-5} more")
     print(f"  skipped (shape mismatch): {len(skipped_mismatch)} keys")
     for k, ss, ts in skipped_mismatch:
         print(f"    - {k}: ckpt {ss} -> target {ts}")

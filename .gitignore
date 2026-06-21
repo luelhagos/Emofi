@@ -3,12 +3,19 @@ __pycache__/
 *.pyc
 .DS_Store
 
-# Large artifacts -- distributed via the Google Drive
-data/
+# Large artifacts -- from the Google Drive. The data/ and output/ckpt/pretrained/
+# folders ship with a placeholder README, but their actual contents are never committed.
+data/*
+!data/README.md
+output/*
+!output/ckpt/
+output/ckpt/*
+!output/ckpt/pretrained/
+output/ckpt/pretrained/*
+!output/ckpt/pretrained/README.md
 preprocessed_data/
 raw_data/
 MEAD_processed/
-output/
 eval/
 hifigan/*.pth.tar
 hifigan/*.pt

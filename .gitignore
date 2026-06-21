@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+.DS_Store
+
+# Large artifacts -- distributed via the Google Drive
+data/
+preprocessed_data/
+raw_data/
+MEAD_processed/
+output/
+eval/
+hifigan/*.pth.tar
+hifigan/*.pt
+*.pt
+*.pth
+*.pth.tar
+*.ckpt
+*.npy
+*.wav
+
+# Local-only scratch
+scratch/
+
+# Run noise
+wandb/
+*.log
+nohup.out
+core_*

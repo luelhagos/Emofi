@@ -1,0 +1,8 @@
+# SER judge dependencies.
+torch
+torchaudio
+transformers
+numpy
+librosa
+scikit-learn
+matplotlib

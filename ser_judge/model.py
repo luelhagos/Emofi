@@ -12,7 +12,7 @@ import torch.nn as nn
 from transformers import Wav2Vec2Model
 
 
-# ── Ordinal loss ───────────────────────────────────────────────────────────────
+# -- Ordinal loss ---------------------------------------------------------------
 
 class OrdinalLoss(nn.Module):
     """
@@ -53,7 +53,7 @@ class OrdinalLoss(nn.Module):
         return (probs > 0.5).long().sum(dim=1)
 
 
-# ── Attentive pooling ─────────────────────────────────────────────────────────
+# -- Attentive pooling ---------------------------------------------------------
 
 class AttentivePooling(nn.Module):
     """
@@ -90,7 +90,7 @@ class AttentivePooling(nn.Module):
         return pooled
 
 
-# ── Model ──────────────────────────────────────────────────────────────────────
+# -- Model ----------------------------------------------------------------------
 
 class EmotionClassifier(nn.Module):
     """
@@ -134,14 +134,14 @@ class EmotionClassifier(nn.Module):
 
         self.encoder = Wav2Vec2Model.from_pretrained(pretrained_name)
 
-        # ── freeze CNN ────────────────────────────────────────────────────────
+        # -- freeze CNN --------------------------------------------------------
         if freeze_cnn:
             for p in self.encoder.feature_extractor.parameters():
                 p.requires_grad = False
             for p in self.encoder.feature_projection.parameters():
                 p.requires_grad = True
 
-        # ── freeze bottom transformer layers ──────────────────────────────────
+        # -- freeze bottom transformer layers ----------------------------------
         if freeze_encoder_layers > 0:
             layers   = self.encoder.encoder.layers
             n_freeze = min(freeze_encoder_layers, len(layers))
@@ -154,7 +154,7 @@ class EmotionClassifier(nn.Module):
 
         hidden = self.encoder.config.hidden_size   # 768 for wav2vec2-base
 
-        # ── pooling ───────────────────────────────────────────────────────────
+        # -- pooling -----------------------------------------------------------
         if use_attentive_pool:
             self.pooling = AttentivePooling(hidden)
             print("[model] pooling: attentive")
@@ -167,10 +167,10 @@ class EmotionClassifier(nn.Module):
         if label_mode == "joint":
             self.joint_head = nn.Linear(hidden, num_joint)
         else:
-            # ── emotion head ──────────────────────────────────────────────────
+            # -- emotion head --------------------------------------------------
             self.emotion_head = nn.Linear(hidden, num_emotions)
 
-            # ── intensity head (emotion-conditioned, deeper) ──────────────────
+            # -- intensity head (emotion-conditioned, deeper) ------------------
             # emotion logits ==> projection ==> concat with pooled ==> two-layer MLP
             self.intensity_proj = nn.Sequential(
                 nn.Linear(num_emotions, emotion_context_dim),
@@ -193,12 +193,12 @@ class EmotionClassifier(nn.Module):
 
         self._print_param_counts()
 
-    # ── helpers ───────────────────────────────────────────────────────────────
+    # -- helpers ---------------------------------------------------------------
 
     def _print_param_counts(self):
         total     = sum(p.numel() for p in self.parameters())
         trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
-        print(f"[model] params — total: {total/1e6:.1f}M  "
+        print(f"[model] params -- total: {total/1e6:.1f}M  "
               f"trainable: {trainable/1e6:.1f}M  "
               f"frozen: {(total-trainable)/1e6:.1f}M")
 
@@ -226,7 +226,7 @@ class EmotionClassifier(nn.Module):
             pooled = hidden.mean(dim=1)
         return pooled
 
-    # ── forward ───────────────────────────────────────────────────────────────
+    # -- forward ---------------------------------------------------------------
 
     def forward(self, waveform: torch.Tensor, attention_mask: torch.Tensor = None):
         """
@@ -249,7 +249,7 @@ class EmotionClassifier(nn.Module):
         # emotion head
         e_logits = self.emotion_head(pooled)           # (B, num_emotions)
 
-        # intensity head — conditioned on emotion, detached so
+        # intensity head -- conditioned on emotion, detached so
         # intensity loss does not affect emotion head gradients
         e_context = self.intensity_proj(e_logits.detach())    # (B, 128)
         i_input   = torch.cat([pooled, e_context], dim=-1)    # (B, 768+128)
@@ -257,7 +257,7 @@ class EmotionClassifier(nn.Module):
 
         return e_logits, i_logits
 
-    # ── convenience ───────────────────────────────────────────────────────────
+    # -- convenience -----------------------------------------------------------
 
     def predict(self, waveform: torch.Tensor):
         self.eval()
@@ -272,7 +272,7 @@ class EmotionClassifier(nn.Module):
         return e_preds, i_preds
 
 
-# ── smoke-test ────────────────────────────────────────────────────────────────
+# -- smoke-test ----------------------------------------------------------------
 
 if __name__ == "__main__":
     model = EmotionClassifier(

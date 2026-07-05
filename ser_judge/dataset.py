@@ -17,7 +17,7 @@ import torchaudio.transforms as T
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 
 
-# ── Label maps ────────────────────────────────────────────────────────────────
+# -- Label maps ----------------------------------------------------------------
 
 EMOTIONS = ["angry", "fear", "happy", "surprised", "sad", "neutral"]
 LEVELS   = ["level1", "level2", "level3"]
@@ -50,7 +50,7 @@ print(f"[dataset] joint classes: {NUM_JOINT_CLASSES}, "
       f"intensity classes: {NUM_LEVEL_CLASSES}")
 
 
-# ── Dataset ───────────────────────────────────────────────────────────────────
+# -- Dataset -------------------------------------------------------------------
 
 class MEADDataset(Dataset):
     """
@@ -90,7 +90,7 @@ class MEADDataset(Dataset):
 
         self.samples = self._load_filelist(filelist_path)
 
-    # ── internal helpers ──────────────────────────────────────────────────────
+    # -- internal helpers ------------------------------------------------------
 
     def _load_filelist(self, path: str):
         samples = []
@@ -102,7 +102,7 @@ class MEADDataset(Dataset):
                     continue
                 parts = line.split("|")
                 if len(parts) < 6:
-                    print(f"[dataset] WARNING line {lineno}: expected 6 fields, got {len(parts)} — skipping")
+                    print(f"[dataset] WARNING line {lineno}: expected 6 fields, got {len(parts)} -- skipping")
                     skipped += 1
                     continue
 
@@ -167,7 +167,7 @@ class MEADDataset(Dataset):
             noise = torch.randn_like(waveform) * self.noise_level
             waveform = waveform + noise
 
-        # random gain ±3 dB
+        # random gain +/-3 dB
         if torch.rand(1).item() < 0.5:
             gain = 10 ** (torch.empty(1).uniform_(-3, 3).item() / 20)
             waveform = waveform * gain
@@ -179,7 +179,7 @@ class MEADDataset(Dataset):
 
         return waveform
 
-    # ── public API ────────────────────────────────────────────────────────────
+    # -- public API ------------------------------------------------------------
 
     def __len__(self):
         return len(self.samples)
@@ -208,7 +208,7 @@ class MEADDataset(Dataset):
 
         return item
 
-    # ── class-weight helpers ──────────────────────────────────────────────────
+    # -- class-weight helpers --------------------------------------------------
 
     def get_class_weights(self) -> dict:
         """
@@ -255,7 +255,7 @@ class MEADDataset(Dataset):
         return weights
 
 
-# ── collate (handles variable-length if max_duration is disabled) ─────────────
+# -- collate (handles variable-length if max_duration is disabled) -------------
 
 def collate_fn(batch):
     """Pads waveforms in a batch to the same length."""
@@ -287,7 +287,7 @@ def collate_fn_synthesized(batch):
 
     out = {"waveform": waveforms}
 
-    # ── labels ──
+    # -- labels --
     if "label" in batch[0]:
         out["label"] = torch.stack([item["label"] for item in batch])
 
@@ -295,14 +295,14 @@ def collate_fn_synthesized(batch):
         out["emotion_label"] = torch.stack([item["emotion_label"] for item in batch])
         out["level_label"]   = torch.stack([item["level_label"]   for item in batch])
 
-    # ── keep filenames ──
+    # -- keep filenames --
     if "filename" in batch[0]:
         out["filename"] = [item["filename"] for item in batch]
 
     return out
 
 
-# ── quick test ──────────────────────────────────────────────────────────
+# -- quick test ----------------------------------------------------------
 
 if __name__ == "__main__":
     import sys

@@ -391,7 +391,7 @@ class VarianceAdaptor(nn.Module):
             # geometric mean, which undershoots the arithmetic mean by
             # exp(sigma^2/2) -- worst for high-variance tokens (sp, finals).
             # `infer_log_d_offset` (B, L_src), set externally at inference from
-            # calibrate_duration_bias.py stats, adds the per-token-class
+            # held-out calibration statistics, adds the per-token-class
             # debias  m + sigma^2/2  in log space (multiplicative on duration,
             # so emotion-conditioned pacing is preserved). None during training.
             off = getattr(self, "infer_log_d_offset", None)

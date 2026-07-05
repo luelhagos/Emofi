@@ -46,9 +46,9 @@ class Tee:
         return getattr(self.terminal, name)
 
 
-# ─────────────────────────────────────────
+# -----------------------------------------
 # Dataset
-# ─────────────────────────────────────────
+# -----------------------------------------
 class WavDirDataset(Dataset):
     def __init__(self, wav_dir, target_sr=16000, max_duration=17.0):
         self.samples = []
@@ -100,9 +100,9 @@ class WavDirDataset(Dataset):
         }
 
 
-# ─────────────────────────────────────────
+# -----------------------------------------
 # Utils
-# ─────────────────────────────────────────
+# -----------------------------------------
 def ordinal_logits_to_probs(logits):
     sig  = torch.sigmoid(logits)
     N, Km1 = sig.shape
@@ -155,9 +155,9 @@ def print_confusion(matrix, labels, title):
         print(f"{row_label:<{col_w}}  {row}")
 
 
-# ─────────────────────────────────────────
+# -----------------------------------------
 # Main
-# ─────────────────────────────────────────
+# -----------------------------------------
 @torch.no_grad()
 def main():
     parser = argparse.ArgumentParser()
@@ -166,7 +166,7 @@ def main():
     parser.add_argument("--output_txt", default="per_file.txt")
     args = parser.parse_args()
 
-    # ── redirect all prints to stdout + output_txt ────────────────────────────
+    # -- redirect all prints to stdout + output_txt ----------------------------
     tee        = Tee(args.output_txt)
     sys.stdout = tee
 
@@ -248,7 +248,7 @@ def _run(args):
         all_l_preds.append(l_pred)
         all_l_labels.append(l_label)
 
-    # ── concat ────────────────────────────────────────────────────────────────
+    # -- concat ----------------------------------------------------------------
     e_probs  = torch.cat(all_e_probs).numpy()
     e_preds  = torch.cat(all_e_preds).numpy()
     e_labels = torch.cat(all_e_labels).numpy()
@@ -256,7 +256,7 @@ def _run(args):
     l_preds  = torch.cat(all_l_preds).numpy()
     l_labels = torch.cat(all_l_labels).numpy()
 
-    # ── emotion metrics ───────────────────────────────────────────────────────
+    # -- emotion metrics -------------------------------------------------------
     e_conf_mat = np.zeros((NUM_EMOTION_CLASSES, NUM_EMOTION_CLASSES), dtype=int)
     for gt, pr in zip(e_labels, e_preds):
         e_conf_mat[gt, pr] += 1
@@ -281,7 +281,7 @@ def _run(args):
                   f"({e_conf_mat[i, i]}/{total})")
     print_confusion(e_conf_mat, EMOTIONS, "Emotion confusion matrix")
 
-    # ── intensity metrics ─────────────────────────────────────────────────────
+    # -- intensity metrics -----------------------------------------------------
     l_conf_mat = np.zeros((NUM_LEVEL_CLASSES, NUM_LEVEL_CLASSES), dtype=int)
     for gt, pr in zip(l_labels, l_preds):
         l_conf_mat[gt, pr] += 1
@@ -306,7 +306,7 @@ def _run(args):
                   f"({l_conf_mat[i, i]}/{total})")
     print_confusion(l_conf_mat, LEVELS, "Intensity confusion matrix")
 
-    # ── confidence analysis ───────────────────────────────────────────────────
+    # -- confidence analysis ---------------------------------------------------
     print("\nPer-class confidence (emotion):")
     for i, name in enumerate(EMOTIONS):
         mask = e_preds == i
@@ -322,7 +322,7 @@ def _run(args):
     print(f"\nECE emotion   : {compute_ece(e_probs.max(1), e_preds, e_labels):.4f}")
     print(f"ECE intensity : {compute_ece(l_probs.max(1), l_preds, l_labels):.4f}")
 
-    # ── ROC curves ────────────────────────────────────────────────────────────
+    # -- ROC curves ------------------------------------------------------------
     roc_dir       = os.path.dirname(args.output_txt) or "."
     emotion_roc   = os.path.join(roc_dir, "emotion_roc.png")
     intensity_roc = os.path.join(roc_dir, "intensity_roc.png")
@@ -330,7 +330,7 @@ def _run(args):
     plot_roc(l_probs, l_labels, LEVELS,   intensity_roc)
     print(f"\nSaved ROC curves ==> {emotion_roc}, {intensity_roc}")
 
-    # ── top confusions ────────────────────────────────────────────────────────
+    # -- top confusions --------------------------------------------------------
     confusion = defaultdict(int)
     for gt, pr in zip(e_labels, e_preds):
         if gt != pr:
@@ -340,15 +340,15 @@ def _run(args):
     for k, v in sorted(confusion.items(), key=lambda x: -x[1])[:10]:
         print(f"  {k[0]:<12} ==> {k[1]:<12}  {v}")
 
-    # ── per-file results ──────────────────────────────────────────────────────
-    print(f"\n{'─'*55}")
+    # -- per-file results ------------------------------------------------------
+    print(f"\n{'-'*55}")
     print("Per-file results  "
           "(filename | emotion_correct | emotion_conf | level_correct | level_conf)")
-    print(f"{'─'*55}")
+    print(f"{'-'*55}")
     for line in per_file_lines:
         print(line)
 
-    print(f"\n[eval] done — all output saved to {args.output_txt}")
+    print(f"\n[eval] done -- all output saved to {args.output_txt}")
 
 
 if __name__ == "__main__":

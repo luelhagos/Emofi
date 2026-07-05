@@ -1,20 +1,20 @@
 """
-Swap test — the decisive eval for the 3-input factorization.
+Cross-identity swap test for the three-input factorization.
 
-For each test utterance we synthesize with:
-  - face_embs  = THIS utterance's face   (intended emotion source)
-  - ref_mel    = a DIFFERENT speaker's mel (intended speaker source)
+Each test utterance is synthesized with:
+  - face_embs  = this utterance's face     (intended emotion source)
+  - reference  = a different speaker's     (intended speaker source)
 
-The output filename encodes BOTH the face-emotion and the ref-emotion so the
-SER eval can be scored two ways:
-  - against the FACE emotion ==> if accuracy is high, the FACE drives emotion
-  - against the REF  emotion ==> if accuracy is high, the REF drives emotion
+The output filename encodes both the face emotion and the reference emotion, so
+the SER evaluation can score the output two ways:
+  - against the FACE emotion: high accuracy means the face drives emotion
+  - against the REFERENCE emotion: high accuracy means the reference drives it
 
-We write two symlink trees for the SER tool (which parses
+Two symlink trees are written for the SER tool (which parses
 <spk>_<emotion>_<level>.wav):
-  <out_dir>_byface/  ==> labelled by the FACE emotion
-  <out_dir>_byref/   ==> labelled by the REF  emotion
-Run the SER eval on each; compare which label set the model's output matches.
+  <out_dir>_byface/  labelled by the FACE emotion
+  <out_dir>_byref/   labelled by the REFERENCE emotion
+Run the SER evaluation on each and compare which label set the output matches.
 
 Usage:
     python3 scripts/synthesize_swap_test.py \
@@ -64,12 +64,23 @@ def parse_args():
                         "(spk_emb_cache/) instead of a ref mel. ECAPA is emotion-invariant "
                         "so the ref need only differ in SPEAKER. Must match how the model "
                         "was trained.")
+    p.add_argument("--postfilter_refine", action="store_true",
+                   help="Apply the intensity postfilter before vocoding. The "
+                        "postfilter is style-conditioned, so speaker transfer "
+                        "must be measured with it applied, not on the bare "
+                        "backbone.")
+    p.add_argument("--postfilter_levels", type=str, default=None,
+                   help="Comma-separated levels the postfilter is applied to "
+                        "(reference recipe: 'level2,level3'); others pass "
+                        "through. Matches synthesize_test_set.py.")
+    p.add_argument("--predict_level", action="store_true",
+                   help="Predict the level from the face (intensity aux head) "
+                        "instead of the filename -- the image-only condition.")
     p.add_argument("--spk_emb_dir", default=None,
-                   help="Override the ECAPA cache dir (default <preprocessed>/"
-                        "spk_emb_cache). Use with the LEACE emotion-stripped cache "
-                        "(probe_ref_emotion_leak.py --erased_out) to test whether "
-                        "stripping ECAPA's linear emotion removes the arousal bleed "
-                        "(r=0.56). Same --seed ==> same pairs ==> paired comparison.")
+                   help="Override the speaker-embedding cache directory (default "
+                        "<preprocessed>/spk_emb_cache), e.g. to evaluate with a "
+                        "post-processed embedding cache. The same --seed produces "
+                        "the same pairs, enabling paired comparisons.")
     return p.parse_args()
 
 
@@ -117,8 +128,8 @@ def main():
             emo = base.split("_")[1]
             rows.append({"base": base, "spk": spk, "phones": phones, "emo": emo})
 
-    # Index utterances by emotion + speaker so we can pick a ref that is a
-    # DIFFERENT speaker AND a DIFFERENT emotion than the face.
+    # Index utterances by emotion + speaker, to pick references that come from
+    # a different speaker AND a different emotion than the face.
     by_emo = {e: [] for e in EMOTIONS}
     for r in rows:
         if r["emo"] in by_emo:
@@ -183,7 +194,30 @@ def main():
                     spk_embs=spk_embs,
                     combine_mode=args.combine_mode,
                 )
-                wav = vocoder(output[0].transpose(1, 2)).squeeze().cpu().numpy()
+                mel_out = output[0]
+                # Intensity postfilter, gated and level-conditioned exactly as in
+                # synthesize_test_set.py, so transfer is measured on the deployed
+                # system.
+                lvl = base.split("_")[2]
+                if args.predict_level and getattr(model, "intensity_aux_head",
+                                                  None) is not None:
+                    pred = int(model.compute_intensity_aux(face_embs)
+                               .argmax(-1).item())
+                    lvl = ("level1", "level2", "level3")[pred]
+                pf_levels = (set(args.postfilter_levels.split(","))
+                             if args.postfilter_levels else None)
+                if args.postfilter_refine and (pf_levels is None or lvl in pf_levels):
+                    if getattr(model, "postfilter_g", None) is None:
+                        raise SystemExit("--postfilter_refine needs a checkpoint "
+                                         "with model config postfilter.enabled.")
+                    style_vec = model.compute_style_vector(
+                        face_embs, spk_embs=spk_embs, ref_mels=ref_mels,
+                        combine_mode=args.combine_mode)
+                    lvl_idx = torch.tensor(
+                        [{"level1": 0, "level2": 1, "level3": 2}.get(lvl, 2)],
+                        device=device)
+                    mel_out = model.postfilter_refine(mel_out, style_vec, lvl_idx)
+                wav = vocoder(mel_out.transpose(1, 2)).squeeze().cpu().numpy()
 
             wav = (np.clip(wav, -1, 1) * 32767).astype(np.int16)
             wavfile.write(out_wav, sr, wav)

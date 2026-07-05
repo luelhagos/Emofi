@@ -56,6 +56,33 @@ def intensity_idx_from_ids(ids):
         dtype=torch.long,
     )
 
+
+def compute_natural_std_per_level(preprocessed_path, manifest, n_mel, device, n_per=400):
+    """Per-(level, mel-bin) within-utterance std from real mels -> (3, n_mel).
+    The global-variance target for the intensity postfilter."""
+    import numpy as np
+    pre = os.path.expandvars(os.path.expanduser(preprocessed_path))
+    acc = [[], [], []]
+    with open(os.path.join(pre, manifest)) as f:
+        for line in f:
+            parts = line.rstrip("\n").split("|")
+            if len(parts) != 4:
+                continue
+            base, spk = parts[0], parts[1]
+            toks = base.split("_")
+            if len(toks) < 3 or toks[2] not in INTENSITY_MAP:
+                continue
+            lv = INTENSITY_MAP[toks[2]]
+            if len(acc[lv]) >= n_per:
+                continue
+            mp = os.path.join(pre, "mel", f"{spk}-mel-{base}.npy")
+            if os.path.exists(mp):
+                acc[lv].append(np.load(mp).std(axis=0))            # (n_mel,)
+    rows = [np.mean(np.stack(a), axis=0) if a else np.ones(n_mel, dtype="float32")
+            for a in acc]
+    return torch.from_numpy(np.stack(rows)).float().to(device)     # (3, n_mel)
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -98,6 +125,30 @@ def main(args, configs):
 
     # Vocoder
     vocoder = get_vocoder(model_config, device)
+
+    # Intensity-postfilter stage: freeze everything except the postfilter, so a
+    # pretrained backbone is refined without being touched.
+    if args.freeze_backbone_for_postfilter:
+        n_train = 0
+        for name, p in model.named_parameters():
+            p.requires_grad = ("postfilter_g" in name or "postfilter_d" in name)
+            n_train += int(p.requires_grad)
+        print(f"[postfilter] froze backbone; training {n_train} postfilter tensors only")
+
+    # Per-(level, mel-bin) natural std target for the postfilter GV loss.
+    natural_std = None
+    if args.lambda_postfilter > 0:
+        natural_std = compute_natural_std_per_level(
+            preprocess_config["path"]["preprocessed_path"], "train.txt",
+            preprocess_config["preprocessing"]["mel"]["n_mel_channels"], device)
+
+    # SER feature matcher (frozen SSL) for the postfilter texture loss.
+    serfm = None
+    if args.lambda_serfm > 0:
+        from model.serfm import SERFeatureMatcher
+        sr_fm = preprocess_config["preprocessing"]["audio"]["sampling_rate"]
+        serfm = SERFeatureMatcher(args.serfm_model, layer=args.serfm_layer,
+                                  in_sr=sr_fm).to(device)
 
     # Logger
     for p in train_config["path"].values():
@@ -217,6 +268,42 @@ def main(args, configs):
                     )
                     total_loss = total_loss + effective_lambda_adv * adv_g_loss
 
+                # Intensity postfilter (frozen-backbone stage). Generator loss:
+                # multi-scale LSGAN + discriminator feature matching + per-level
+                # GV + content anchor, on the detached decoder mel, plus the SER
+                # feature-matching texture loss (refined -> vocoder -> frozen SSL,
+                # matched to the vocoded ground-truth mel). Only the postfilter
+                # receives gradients.
+                pf_style = pf_parts = None
+                if args.lambda_postfilter > 0:
+                    pf_style = model.module.compute_style_vector(
+                        batch[17],
+                        spk_embs=(batch[18] if args.speaker_emb else None),
+                        combine_mode=args.combine_mode,
+                    ).detach()
+                    pf_levels = intensity_idx_from_ids(batch[0]).to(device).clamp(0, 2)
+                    pf_loss, pf_parts = model.module.postfilter_g_loss(
+                        output[2].detach(), batch[6], pf_style, pf_levels,
+                        natural_std, output[8],
+                        lambda_fm=args.pf_lambda_fm, lambda_gv=args.pf_lambda_gv,
+                        lambda_con=args.pf_lambda_con,
+                    )
+                    total_loss = total_loss + args.lambda_postfilter * pf_loss
+
+                    if args.lambda_serfm > 0:
+                        # Texture loss on every utterance, each matched to its
+                        # own level's reference audio.
+                        refined_fm = model.module.postfilter_refine(
+                            output[2].detach(), pf_style, pf_levels)
+                        Tg = refined_fm.shape[1]
+                        gt_fm = batch[6][:, :Tg]
+                        ref_wav = vocoder(refined_fm.transpose(1, 2)).squeeze(1)
+                        with torch.no_grad():
+                            gt_wav = vocoder(gt_fm.transpose(1, 2)).squeeze(1)
+                        serfm_loss = serfm.fm_loss(ref_wav, gt_wav)
+                        total_loss = total_loss + args.lambda_serfm * serfm_loss
+                        pf_parts["serfm"] = serfm_loss.item()
+
                 # Backward
                 backward(model, optimizer_main, total_loss, step, grad_acc_step, grad_clip_thresh)
 
@@ -250,6 +337,15 @@ def main(args, configs):
                         + F.mse_loss(D_t_fake_for_d, torch.zeros_like(D_t_fake_for_d))
                     )
                     backward(model, optimizer_disc, d_t_loss, step, grad_acc_step, grad_clip_thresh)
+
+                # Postfilter discriminator update (mirrors the D_t step).
+                if args.lambda_postfilter > 0:
+                    optimizer_disc.zero_grad()
+                    pf_d_loss = model.module.postfilter_d_loss(
+                        output[2].detach(), batch[6], pf_style, output[8],
+                        levels=intensity_idx_from_ids(batch[0]).to(device).clamp(0, 2))
+                    backward(model, optimizer_disc, pf_d_loss, step,
+                             grad_acc_step, grad_clip_thresh)
 
                 # Meta-learning path (unused in the default recipe; kept for parity).
                 if step > meta_learning_warmup:
@@ -405,6 +501,46 @@ if __name__ == "__main__":
         help="Three-input factorization: combine the face style with the speaker "
              "channel into the style vector. 'concat_linear' is the default recipe; "
              "None falls back to face-only.",
+    )
+    parser.add_argument(
+        "--lambda_postfilter", type=float, default=0.0,
+        help="Weight for the intensity-postfilter generator loss (0 disables the "
+             "postfilter stage). Requires a model config with postfilter.enabled "
+             "and is normally run with --freeze_backbone_for_postfilter on a "
+             "pretrained backbone checkpoint.",
+    )
+    parser.add_argument(
+        "--pf_lambda_fm", type=float, default=2.0,
+        help="Discriminator feature-matching weight inside the postfilter loss.",
+    )
+    parser.add_argument(
+        "--pf_lambda_gv", type=float, default=1.0,
+        help="Per-level global-variance weight inside the postfilter loss.",
+    )
+    parser.add_argument(
+        "--pf_lambda_con", type=float, default=0.5,
+        help="Content-anchor (L1 to the decoder mel) weight inside the postfilter loss.",
+    )
+    parser.add_argument(
+        "--lambda_serfm", type=float, default=0.0,
+        help="Weight for the SER feature-matching texture loss (model/serfm.py). "
+             "The main texture term of the intensity postfilter; 10.0 in the "
+             "reference recipe.",
+    )
+    parser.add_argument(
+        "--serfm_model", type=str, default="facebook/wav2vec2-base",
+        help="Frozen SSL feature extractor for the SER feature-matching loss. "
+             "Use a different model from any recognizer used for evaluation.",
+    )
+    parser.add_argument(
+        "--serfm_layer", type=int, default=4,
+        help="SSL hidden layer used for feature matching (intermediate layers "
+             "encode acoustic texture rather than class labels).",
+    )
+    parser.add_argument(
+        "--freeze_backbone_for_postfilter", action="store_true",
+        help="Freeze every parameter except the postfilter generator and "
+             "discriminator (the postfilter training stage).",
     )
     parser.add_argument(
         "--speaker_emb", action="store_true",

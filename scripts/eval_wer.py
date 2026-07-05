@@ -91,7 +91,7 @@ def main():
         args.out_txt = os.path.expandvars(os.path.expanduser(args.out_txt))
         with open(args.out_txt, "w") as f:
             f.write(summary + "\n" + "\n".join(lines) + "\n")
-        print(f"[wer] per-file + summary → {args.out_txt}")
+        print(f"[wer] per-file + summary -> {args.out_txt}")
 
 
 if __name__ == "__main__":

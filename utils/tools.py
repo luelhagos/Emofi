@@ -16,12 +16,13 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def build_duration_calib_offset(seq, calib, emotion=None, scale=1.0):
-    """Per-token log-space duration offsets from a calibrate_duration_bias.py
-    JSON (duration debias). seq: 1-D array of symbol ids. Returns (L,)
-    float32 to set as VarianceAdaptor.infer_log_d_offset (batched + on device
-    by the caller). emotion (e.g. 'sad') selects per-emotion offsets when that
-    cell exists; falls back to the global class offset. scale in [0,1] dials
-    the correction."""
+    """Per-token log-space duration offsets from a duration-calibration JSON
+    (per-token-class offsets fitted on held-out data). seq: 1-D array of
+    symbol ids. Returns (L,) float32 to set as
+    VarianceAdaptor.infer_log_d_offset (batched + on device by the caller).
+    emotion (e.g. 'sad') selects per-emotion offsets when that cell exists;
+    falls back to the global class offset. scale in [0,1] dials the
+    correction."""
     from text.symbols import symbols
     sil_ids = {symbols.index(s) for s in ("@sp", "@spn", "@sil")}
     final_k = calib.get("final_k", 3)

@@ -13,6 +13,7 @@ from .modules import (
     PhonemeDiscriminator,
     StyleDiscriminator,
 )
+from .postfilter import PostfilterGenerator, MelDiscriminator
 from utils.tools import get_mask_from_lengths
 
 
@@ -90,6 +91,21 @@ class StyleSpeech(nn.Module):
         # axis. Used when forward(spk_embs=...) is passed.
         self.spk_to_style = nn.Linear(192, H)
 
+        # Intensity postfilter (model/postfilter.py): a residual refiner on the
+        # decoder mel, trained on the frozen backbone. Enabled via the
+        # model config's `postfilter` block (see config/MEAD/model_intensity.yaml).
+        self.postfilter_g = self.postfilter_d = None
+        pcfg = model_config.get("postfilter", {}) if model_config else {}
+        if pcfg.get("enabled", False):
+            n_mel_pf = preprocess_config["preprocessing"]["mel"]["n_mel_channels"]
+            self.postfilter_g = PostfilterGenerator(
+                n_mel=n_mel_pf, style_dim=H,
+                hidden=pcfg.get("hidden", 256), n_layers=pcfg.get("n_layers", 6),
+                level_cond=pcfg.get("level_cond", False))
+            self.postfilter_d = MelDiscriminator(
+                n_mel=n_mel_pf, hidden=pcfg.get("disc_hidden", 256),
+                n_scales=pcfg.get("n_scales", 3))
+
     def compute_emotion_aux(self, face_embs):
         """Return aux emotion logits (B, 6) from face_embs. Called from
         train.py to compute an auxiliary CE loss on the style vector.
@@ -99,8 +115,84 @@ class StyleSpeech(nn.Module):
 
     def compute_intensity_aux(self, face_embs):
         """Return aux intensity logits (B, 3) from face_embs. Same idea as
-        compute_emotion_aux but for the three MEAD intensity levels."""
+        compute_emotion_aux but for the three MEAD intensity levels. Also used
+        at inference to predict the intensity level from the face alone."""
         return self.intensity_aux_head(self.face_to_style(face_embs))
+
+    def compute_style_vector(self, face_embs, spk_embs=None, ref_mels=None,
+                             mels=None, mel_masks=None, combine_mode=None):
+        """Recompute the style vector (B, 1, H) the same way forward() does, so
+        the postfilter can be conditioned on it outside the main forward."""
+        face_style = self.face_to_style(face_embs).unsqueeze(1)
+        if combine_mode is None:
+            return face_style
+        if spk_embs is not None:
+            ref_style = self.spk_to_style(spk_embs).unsqueeze(1)
+        else:
+            ref = ref_mels if ref_mels is not None else mels
+            ref_masks = (ref.abs().sum(dim=-1) == 0) if ref is not mels else mel_masks
+            ref_style = self.mel_style_encoder(ref, ref_masks)
+        if combine_mode == "sum":
+            return face_style + ref_style
+        if combine_mode == "gated":
+            a = torch.sigmoid(self.combine_gate)
+            return a * face_style + (1.0 - a) * ref_style
+        if combine_mode == "concat_linear":
+            return self.combine_linear(torch.cat([face_style, ref_style], dim=-1))
+        raise ValueError(f"Unknown combine_mode: {combine_mode!r}")
+
+    # ---- intensity postfilter ------------------------------------------------
+
+    def postfilter_refine(self, mu, style_vector, level=None, level_weights=None):
+        """Inference: refine mu -> mu + Delta. mu: (B, T, n_mel); style_vector:
+        (B, 1, H); level: (B,) in {0, 1, 2} or None; level_weights: (B, 3) soft
+        mixture over the level embeddings (continuous intensity control)."""
+        refined = self.postfilter_g(mu.transpose(1, 2), style_vector, level,
+                                    level_weights=level_weights)
+        return refined.transpose(1, 2)
+
+    def _pf_inputs(self, mu, gt_mel, mel_masks):
+        """Shared (mu_t, gt_t, valid) in (B, n_mel, T); valid (B, 1, T) 1=keep."""
+        mu_t = mu.transpose(1, 2)
+        gt_t = gt_mel[:, : mu.shape[1], :].transpose(1, 2)
+        valid = (~mel_masks[:, : mu.shape[1]]).unsqueeze(1).float()
+        return mu_t, gt_t, valid
+
+    def postfilter_d_loss(self, mu, gt_mel, style_vector, mel_masks, levels=None):
+        """LSGAN discriminator: real (gt) -> 1, refined -> 0, summed over scales."""
+        mu_t, gt_t, valid = self._pf_inputs(mu, gt_mel, mel_masks)
+        with torch.no_grad():
+            refined = self.postfilter_g(mu_t, style_vector, levels) * valid
+        gt_t = gt_t * valid
+        loss = 0.0
+        for (lr, _), (lf, _) in zip(self.postfilter_d(gt_t), self.postfilter_d(refined)):
+            loss = loss + ((lr - 1.0) ** 2).mean() + (lf ** 2).mean()
+        return loss
+
+    def postfilter_g_loss(self, mu, gt_mel, style_vector, levels, natural_std, mel_masks,
+                          lambda_fm=2.0, lambda_gv=1.0, lambda_con=0.5):
+        """Generator: LSGAN adversarial + discriminator feature matching +
+        per-level global-variance + content anchor (to mu). levels: (B,) in
+        {0, 1, 2}; natural_std: (3, n_mel) per-level target."""
+        mu_t, gt_t, valid = self._pf_inputs(mu, gt_mel, mel_masks)
+        refined = self.postfilter_g(mu_t, style_vector, levels)
+        refined_m, gt_m = refined * valid, gt_t * valid
+        d_ref, d_gt = self.postfilter_d(refined_m), self.postfilter_d(gt_m)
+        l_adv = sum(((lf - 1.0) ** 2).mean() for lf, _ in d_ref)
+        l_fm = 0.0
+        for (_, fr), (_, fg) in zip(d_ref, d_gt):
+            for a, b in zip(fr, fg):
+                l_fm = l_fm + F.l1_loss(a, b.detach())
+        # per-level GV: rendered per-bin std over valid frames vs natural target
+        n = valid.sum(dim=2).clamp(min=1.0)                        # (B, 1)
+        mean = (refined * valid).sum(dim=2) / n                    # (B, n_mel)
+        var = (((refined - mean.unsqueeze(2)) ** 2) * valid).sum(dim=2) / n
+        std = torch.sqrt(var + 1e-8)                               # (B, n_mel)
+        l_gv = F.l1_loss(std, natural_std[levels])
+        l_con = F.l1_loss(refined_m, mu_t * valid)                 # content anchor
+        total = l_adv + lambda_fm * l_fm + lambda_gv * l_gv + lambda_con * l_con
+        return total, {"adv": l_adv.item(), "fm": float(l_fm) if isinstance(l_fm, float)
+                       else l_fm.item(), "gv": l_gv.item(), "con": l_con.item()}
 
     def G(
             self,

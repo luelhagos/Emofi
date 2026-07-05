@@ -22,12 +22,14 @@ lexicon/          grapheme-to-phoneme lexicon (only needed to phonemize new, fre
 config/MEAD/      preprocess.yaml (data & features), model.yaml (architecture), train.yaml (optimizer & steps)
 jobs/             one-command runners: train.sh (train), eval.sh (synthesize + WER + emotion2vec)
 scripts/          eval & synthesis helpers, run individually:
-                    synthesize_test_set.py   synthesize the test set to wavs
+                    synthesize_test_set.py   synthesize the test set to wavs (postfilter / level flags)
                     synthesize_swap_test.py  cross-speaker swap synthesis (factorization probe)
-                    eval_wer.py              Whisper word error rate (intelligibility)
-                    eval_emotion2vec.py      emotion accuracy + similarity (emotion2vec judge)
+                    eval_wer.py              -> WER (Whisper, intelligibility)
+                    eval_emotion2vec.py      -> emotion2vec WA (independent emotion judge)
 ser_judge/        Wav2Vec2 SER judge -> Emotion + Intensity WA/UA (separate env; see ser_judge/README.md)
 ```
+Intensity postfilter: `model/postfilter.py`, `model/serfm.py`,
+`config/MEAD/{model,train}_intensity.yaml`, `jobs/{train,eval}_intensity.sh`
 
 ## Setup
 
@@ -74,7 +76,27 @@ skip training entirely, download the optional trained checkpoint and run only th
 ```bash
 python ser_judge/evaluate_synthesized.py \
     --checkpoint ser_judge/best_model.pt --wav_dir eval/test --output_txt eval/ser.txt
-# -> Emotion WA/UA + Intensity WA/UA
+# -> Emotion WA/UA + Intensity WA/UA + per-level (L1/L2/L3) recall
+```
+
+
+## Graded intensity: the SER feature-matching postfilter
+
+A residual postfilter on the decoder mel that restores per-level emotion intensity. It can be trained
+in two ways: end-to-end with the backbone, or separately as a second stage on a
+frozen backbone. Separate training is recommended as it is easier to manage
+(the backbone and its metrics stay untouched, and the postfilter can be ablated
+on/off against the same checkpoint).
+
+```bash
+# separate (recommended): train the postfilter on a frozen backbone checkpoint
+BACKBONE=<path/to/backbone_ckpt.pth.tar> bash jobs/train_intensity.sh <GPU_ID>
+
+# evaluate
+STEP=<CKPT_STEP> bash jobs/eval_intensity.sh <GPU_ID>
+
+# image-only
+STEP=<CKPT_STEP> PREDICT_LEVEL=1 bash jobs/eval_intensity.sh <GPU_ID>
 ```
 
 

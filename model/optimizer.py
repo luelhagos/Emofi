@@ -8,7 +8,7 @@ class ScheduledOptimMain:
     def __init__(self, model, train_config, model_config, current_step, extra_filters=None):
         # Discriminator params are excluded from the MAIN optimizer (they have
         # their own ScheduledOptimDisc) but stay TRAINABLE -- do NOT freeze them.
-        disc_filters = ['D_s', 'D_t']
+        disc_filters = ['D_s', 'D_t', 'postfilter_d']
         # extra_filters are truly frozen: excluded from the optimizer AND
         # requires_grad=False.
         freeze_filters = list(extra_filters) if extra_filters else []
@@ -84,7 +84,8 @@ class ScheduledOptimDisc:
 
         self._optimizer = torch.optim.Adam(
             [param for name, param in model.named_parameters()
-                        if any([filtered_name in name for filtered_name in ['D_s', 'D_t']])],
+                        if any([filtered_name in name
+                                for filtered_name in ['D_s', 'D_t', 'postfilter_d']])],
             betas=train_config["optimizer"]["betas"],
             eps=train_config["optimizer"]["eps"],
             weight_decay=train_config["optimizer"]["weight_decay"],

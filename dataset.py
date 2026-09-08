@@ -16,7 +16,7 @@ random.seed(1234)
 class Dataset(Dataset):
     def __init__(
         self, filename, preprocess_config, train_config, sort=False, drop_last=False,
-        speaker_emb=False,
+        speaker_emb=False, mismatch_face=False, mismatch_face_prob=0.5,
     ):
         self.dataset_name = preprocess_config["dataset"]
         self.preprocessed_path = preprocess_config["path"]["preprocessed_path"]
@@ -34,6 +34,19 @@ class Dataset(Dataset):
         # ECAPA speaker-embedding cache (parallel to face_emb).
         self.speaker_emb = speaker_emb
         self.spk_emb_dir = os.path.join(self.preprocessed_path, "spk_emb_cache")
+
+        # Cross-speaker face sampling. With probability mismatch_face_prob the
+        # face embedding comes from a different actor's utterance with the same
+        # (emotion, intensity level); otherwise from a different utterance of the
+        # same actor in that cell. The speaker embedding always stays the
+        # target's own.
+        self.mismatch_face = mismatch_face
+        self.mismatch_face_prob = mismatch_face_prob
+        if mismatch_face:
+            self.emo_int_ids = {}   # (emotion, level) -> [dataset index]
+            for i, b in enumerate(self.basename):
+                parts = b.split("_")
+                self.emo_int_ids.setdefault((parts[1], parts[2]), []).append(i)
 
     def __len__(self):
         return len(self.text)
@@ -78,8 +91,21 @@ class Dataset(Dataset):
         )
         quary_duration = np.load(quary_duration_path)
 
+        # Face source: the target's own face unless mismatch_face is on. Falls
+        # back to the target's own face if the sampled pool is empty.
+        face_base = basename
+        if self.mismatch_face:
+            parts = basename.split("_")
+            cell = self.emo_int_ids.get((parts[1], parts[2]), [])
+            if random.random() < self.mismatch_face_prob:
+                pool = [j for j in cell if self.speaker[j] != speaker]
+            else:
+                pool = [j for j in cell
+                        if self.speaker[j] == speaker and self.basename[j] != basename]
+            if pool:
+                face_base = self.basename[random.choice(pool)]
         face_emb = torch.load(
-            os.path.join(self.face_emb_dir, "{}.pt".format(basename)),
+            os.path.join(self.face_emb_dir, "{}.pt".format(face_base)),
             map_location="cpu",
         ).numpy()  # (768,)
 

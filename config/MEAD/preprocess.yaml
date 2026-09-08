@@ -1,6 +1,8 @@
 dataset: "MEAD"
 
 path:
+  corpus_path: "data/MEAD_corpus"        # per-utterance wavs + transcripts (only for preprocessing from scratch)
+  raw_path: "data/MEAD_align"            # staged wavs + .lab files for forced alignment
   preprocessed_path: "data/MEAD"
   lexicon_path: "lexicon/librispeech-lexicon.txt"
 

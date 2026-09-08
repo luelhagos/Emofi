@@ -6,10 +6,10 @@ class ScheduledOptimMain:
     """ A simple wrapper class for learning rate scheduling """
 
     def __init__(self, model, train_config, model_config, current_step, extra_filters=None):
-        # Discriminator params are excluded from the MAIN optimizer (they have
-        # their own ScheduledOptimDisc) but stay TRAINABLE -- do NOT freeze them.
+        # Discriminator params are excluded from the main optimizer (they have
+        # their own ScheduledOptimDisc) but stay trainable; they are not frozen.
         disc_filters = ['D_s', 'D_t', 'postfilter_d']
-        # extra_filters are truly frozen: excluded from the optimizer AND
+        # extra_filters are truly frozen: excluded from the optimizer and
         # requires_grad=False.
         freeze_filters = list(extra_filters) if extra_filters else []
 
@@ -19,14 +19,14 @@ class ScheduledOptimMain:
                 param.requires_grad = False     # truly frozen
                 frozen.append(name)
             elif any(f in name for f in disc_filters):
-                disc_excluded.append(name)       # trainable, but not by THIS optimizer
+                disc_excluded.append(name)       # trainable, but not by this optimizer
             else:
                 trained.append((name, param))
 
         print(f"[ScheduledOptimMain] training {len(trained)} param tensors; "
               f"{len(disc_excluded)} disc tensors deferred to optimizer_disc")
         if freeze_filters:
-            print(f"[ScheduledOptimMain] FROZE {len(frozen)} param tensors "
+            print(f"[ScheduledOptimMain] froze {len(frozen)} param tensors "
                   f"(requires_grad=False) with prefixes {freeze_filters}; first 10:")
             for n in frozen[:10]:
                 print(f"  - {n}")
@@ -41,15 +41,13 @@ class ScheduledOptimMain:
         self.anneal_steps = train_config["optimizer"]["anneal_steps"]
         self.anneal_rate = train_config["optimizer"]["anneal_rate"]
         self.init_lr = np.power(model_config["transformer"]["encoder_hidden"], -0.5)
-        # meta_learning_warmup = train_config["step"]["meta_learning_warmup"]
-        self.current_step = current_step# if current_step <= meta_learning_warmup else current_step - meta_learning_warmup
+        self.current_step = current_step
 
     def step_and_update_lr(self):
         self._update_learning_rate()
         self._optimizer.step()
 
     def zero_grad(self):
-        # print(self.init_lr)
         self._optimizer.zero_grad()
 
     def load_state_dict(self, state_dict):
@@ -97,7 +95,6 @@ class ScheduledOptimDisc:
         self._optimizer.step()
 
     def zero_grad(self):
-        # print(self.init_lr)
         self._optimizer.zero_grad()
 
     def load_state_dict(self, state_dict):

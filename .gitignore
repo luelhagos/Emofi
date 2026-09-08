@@ -1,10 +1,7 @@
-# Python
 __pycache__/
 *.pyc
 .DS_Store
 
-# Large artifacts -- from the Google Drive. The data/ and output/ckpt/pretrained/
-# folders ship with a placeholder README, but their actual contents are never committed.
 data/*
 !data/README.md
 output/*
@@ -26,11 +23,10 @@ hifigan/*.pt
 *.npy
 *.wav
 
-# Local-only scratch
 scratch/
 
-# Run noise
 wandb/
 *.log
 nohup.out
 core_*
+!data/mead_sentences.csv

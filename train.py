@@ -16,7 +16,7 @@ from dataset import Dataset
 
 from evaluate import evaluate
 
-# Optional wandb (no-op if not installed or not logged in).
+# Optional wandb
 try:
     import wandb
     WANDB_AVAILABLE = True
@@ -104,6 +104,8 @@ def main(args, configs):
     dataset = Dataset(
         "train.txt", preprocess_config, train_config, sort=True, drop_last=True,
         speaker_emb=args.speaker_emb,
+        mismatch_face=args.mismatch_face,
+        mismatch_face_prob=args.mismatch_face_prob,
     )
     batch_size = train_config["optimizer"]["batch_size"]
     group_size = 4  # >1 enables sorting in Dataset
@@ -291,18 +293,24 @@ def main(args, configs):
                     total_loss = total_loss + args.lambda_postfilter * pf_loss
 
                     if args.lambda_serfm > 0:
-                        # Texture loss on every utterance, each matched to its
-                        # own level's reference audio.
-                        refined_fm = model.module.postfilter_refine(
-                            output[2].detach(), pf_style, pf_levels)
-                        Tg = refined_fm.shape[1]
-                        gt_fm = batch[6][:, :Tg]
-                        ref_wav = vocoder(refined_fm.transpose(1, 2)).squeeze(1)
-                        with torch.no_grad():
-                            gt_wav = vocoder(gt_fm.transpose(1, 2)).squeeze(1)
-                        serfm_loss = serfm.fm_loss(ref_wav, gt_wav)
-                        total_loss = total_loss + args.lambda_serfm * serfm_loss
-                        pf_parts["serfm"] = serfm_loss.item()
+                        # Texture loss: each refined mel is matched to its own
+                        # ground-truth audio. Level-3 utterances only by default;
+                        # --serfm_all_levels matches every level to its own
+                        # real texture.
+                        fm_mask = (torch.ones_like(pf_levels, dtype=torch.bool)
+                                   if args.serfm_all_levels else (pf_levels == 2))
+                        if fm_mask.any():
+                            refined_fm = model.module.postfilter_refine(
+                                output[2].detach()[fm_mask], pf_style[fm_mask],
+                                pf_levels[fm_mask])
+                            Tg = refined_fm.shape[1]
+                            gt_fm = batch[6][fm_mask][:, :Tg]
+                            ref_wav = vocoder(refined_fm.transpose(1, 2)).squeeze(1)
+                            with torch.no_grad():
+                                gt_wav = vocoder(gt_fm.transpose(1, 2)).squeeze(1)
+                            serfm_loss = serfm.fm_loss(ref_wav, gt_wav)
+                            total_loss = total_loss + args.lambda_serfm * serfm_loss
+                            pf_parts["serfm"] = serfm_loss.item()
 
                 # Backward
                 backward(model, optimizer_main, total_loss, step, grad_acc_step, grad_clip_thresh)
@@ -538,6 +546,11 @@ if __name__ == "__main__":
              "encode acoustic texture rather than class labels).",
     )
     parser.add_argument(
+        "--serfm_all_levels", action="store_true",
+        help="Apply the SER feature-matching loss to every intensity level "
+             "(each matched to its own real audio) instead of level3 only.",
+    )
+    parser.add_argument(
         "--freeze_backbone_for_postfilter", action="store_true",
         help="Freeze every parameter except the postfilter generator and "
              "discriminator (the postfilter training stage).",
@@ -546,6 +559,16 @@ if __name__ == "__main__":
         "--speaker_emb", action="store_true",
         help="Use a pretrained ECAPA speaker embedding (cached in spk_emb_cache/) as "
              "the speaker channel. The default recipe. Requires --combine_mode.",
+    )
+    parser.add_argument(
+        "--mismatch_face", action="store_true",
+        help="With probability --mismatch_face_prob, take the face embedding from a "
+             "different actor's utterance with the same emotion and intensity level; "
+             "the speaker embedding stays the target's own.",
+    )
+    parser.add_argument(
+        "--mismatch_face_prob", type=float, default=0.5,
+        help="Per-utterance probability of a cross-actor face (with --mismatch_face).",
     )
     parser.add_argument(
         "-p", "--preprocess_config", type=str, required=True, help="path to preprocess.yaml",

@@ -1,12 +1,8 @@
-import argparse
-import os
-
 import torch
-import yaml
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from utils.model import get_model, get_vocoder
+from utils.model import get_vocoder
 from utils.tools import to_device, log, synth_one_sample
 from model import MetaStyleSpeechLossMain
 from dataset import Dataset
@@ -39,7 +35,7 @@ def evaluate(model, step, configs, logger=None, vocoder=None, loss_len=5, combin
         for batch in batchs:
             batch = to_device(batch, device)
             with torch.no_grad():
-                # Forward (Design A: pass face_embs from batch[17]).
+                # Forward pass with face_embs from batch[17].
                 # combine_mode threaded in by train.py; None means face-only.
                 output = (None, None, *model(
                     *(batch[2:12]),

@@ -7,13 +7,13 @@ Each test utterance is synthesized with:
 
 The output filename encodes both the face emotion and the reference emotion, so
 the SER evaluation can score the output two ways:
-  - against the FACE emotion: high accuracy means the face drives emotion
-  - against the REFERENCE emotion: high accuracy means the reference drives it
+  - against the face emotion: high accuracy means the face drives emotion
+  - against the reference emotion: high accuracy means the reference drives it
 
 Two symlink trees are written for the SER tool (which parses
 <spk>_<emotion>_<level>.wav):
-  <out_dir>_byface/  labelled by the FACE emotion
-  <out_dir>_byref/   labelled by the REFERENCE emotion
+  <out_dir>_byface/  labelled by the face emotion
+  <out_dir>_byref/   labelled by the reference emotion
 Run the SER evaluation on each and compare which label set the output matches.
 
 Usage:
@@ -59,10 +59,14 @@ def parse_args():
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=0,
                    help="Controls the random pairing of face<==>ref. Fixed for reproducibility.")
+    p.add_argument("--zero_face", action="store_true",
+                   help="Ablation: zero the face style component before combining.")
+    p.add_argument("--zero_ref", action="store_true",
+                   help="Ablation: zero the reference (speaker) style component before combining.")
     p.add_argument("--speaker_emb", action="store_true",
-                   help="Speaker source is a DIFFERENT speaker's cached ECAPA emb "
+                   help="Speaker source is a different speaker's cached ECAPA emb "
                         "(spk_emb_cache/) instead of a ref mel. ECAPA is emotion-invariant "
-                        "so the ref need only differ in SPEAKER. Must match how the model "
+                        "so the ref need only differ in speaker. Must match how the model "
                         "was trained.")
     p.add_argument("--postfilter_refine", action="store_true",
                    help="Apply the intensity postfilter before vocoding. The "
@@ -116,7 +120,7 @@ def main():
     spk_dir  = os.path.join(pre, "spk_emb_cache")
     if args.spk_emb_dir:
         spk_dir = os.path.expandvars(os.path.expanduser(args.spk_emb_dir))
-        print(f"[swap] ECAPA cache OVERRIDE: {spk_dir}")
+        print(f"[swap] ECAPA cache override: {spk_dir}")
 
     rows = []
     with open(os.path.join(pre, args.manifest)) as f:
@@ -129,14 +133,14 @@ def main():
             rows.append({"base": base, "spk": spk, "phones": phones, "emo": emo})
 
     # Index utterances by emotion + speaker, to pick references that come from
-    # a different speaker AND a different emotion than the face.
+    # a different speaker and a different emotion than the face.
     by_emo = {e: [] for e in EMOTIONS}
     for r in rows:
         if r["emo"] in by_emo:
             by_emo[r["emo"]].append(r)
 
     def pick_ref(face_row):
-        """A ref from a different speaker AND different emotion than the face."""
+        """A ref from a different speaker and different emotion than the face."""
         other_emos = [e for e in EMOTIONS if e != face_row["emo"] and by_emo[e]]
         rng.shuffle(other_emos)
         for e in other_emos:
@@ -181,7 +185,7 @@ def main():
             if args.speaker_emb:
                 spk_embs = torch.load(ref_src_path, map_location="cpu").float().unsqueeze(0).to(device)
             else:
-                ref_mel  = np.load(ref_src_path)          # SWAP: different speaker+emotion mel
+                ref_mel  = np.load(ref_src_path)          # swap: different speaker+emotion mel
                 ref_mels = torch.from_numpy(pad_2D([ref_mel])).float().to(device)
 
             with torch.no_grad():
@@ -193,6 +197,8 @@ def main():
                     ref_mels=ref_mels,
                     spk_embs=spk_embs,
                     combine_mode=args.combine_mode,
+                    zero_face=args.zero_face,
+                    zero_ref=args.zero_ref,
                 )
                 mel_out = output[0]
                 # Intensity postfilter, gated and level-conditioned exactly as in
@@ -241,8 +247,8 @@ def main():
 
     print(f"\nDone. wrote {written}, skipped {skipped}, errored {errored}")
     print(f"  audio:        {args.out_dir}")
-    print(f"  SER by FACE:  {byface}   (high acc here ==> FACE drives emotion ==> decoupling works)")
-    print(f"  SER by REF:   {byref}    (high acc here ==> REF drives emotion ==> factorization failed)")
+    print(f"  SER by face:  {byface}   (high acc here ==> face drives emotion ==> decoupling works)")
+    print(f"  SER by ref:   {byref}    (high acc here ==> ref drives emotion ==> factorization failed)")
     print(f"  pairing log:  {args.out_dir}_pairs.txt")
 
 

@@ -387,37 +387,12 @@ class VarianceAdaptor(nn.Module):
             x, mel_len = self.length_regulator(x, duration_target, max_len)
             duration_rounded = duration_target
         else:
-            # Lognormal bias correction: MSE on log(d+1) predicts the
-            # geometric mean, which undershoots the arithmetic mean by
-            # exp(sigma^2/2) -- worst for high-variance tokens (sp, finals).
-            # `infer_log_d_offset` (B, L_src), set externally at inference from
-            # held-out calibration statistics, adds the per-token-class
-            # debias  m + sigma^2/2  in log space (multiplicative on duration,
-            # so emotion-conditioned pacing is preserved). None during training.
-            off = getattr(self, "infer_log_d_offset", None)
-            if off is not None:
-                log_duration_prediction = (
-                    log_duration_prediction
-                    + off[:, : log_duration_prediction.size(1)]
-                )
-            # min=1 (not 0): the duration predictor under-predicts late-utterance
-            # phonemes toward ~0 frames, which drops trailing words entirely (a
-            # global d_control can't fix it since 0*k=0). Forcing >=1 frame per
-            # phoneme guarantees every phoneme renders, recovering dropped tails.
+            # Every phoneme gets at least one frame so no token is dropped at
+            # inference.
             duration_rounded = torch.clamp(
                 (torch.round(torch.exp(log_duration_prediction) - 1) * d_control),
                 min=1,
             )
-            # Final-phoneme audibility floor: min=1 guarantees presence,
-            # not audibility -- 1 frame = 12ms. `infer_d_floor` (B, L_src), set
-            # externally (build_duration_floor), raises the LAST k non-silence
-            # phonemes to an audible minimum (~5 frames) so trailing words
-            # survive even when the predictor starves them. None in training.
-            dfloor = getattr(self, "infer_d_floor", None)
-            if dfloor is not None:
-                duration_rounded = torch.maximum(
-                    duration_rounded, dfloor[:, : duration_rounded.size(1)]
-                )
             x, mel_len = self.length_regulator(x, duration_rounded, None)
             mel_mask = get_mask_from_lengths(mel_len)
         return x, duration_rounded, mel_len, mel_mask

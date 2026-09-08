@@ -15,65 +15,6 @@ matplotlib.use("Agg")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def build_duration_calib_offset(seq, calib, emotion=None, scale=1.0):
-    """Per-token log-space duration offsets from a duration-calibration JSON
-    (per-token-class offsets fitted on held-out data). seq: 1-D array of
-    symbol ids. Returns (L,) float32 to set as
-    VarianceAdaptor.infer_log_d_offset (batched + on device by the caller).
-    emotion (e.g. 'sad') selects per-emotion offsets when that cell exists;
-    falls back to the global class offset. scale in [0,1] dials the
-    correction."""
-    from text.symbols import symbols
-    sil_ids = {symbols.index(s) for s in ("@sp", "@spn", "@sil")}
-    final_k = calib.get("final_k", 3)
-    names = ["regular"] * len(seq)
-    for i, s in enumerate(seq):
-        if int(s) in sil_ids:
-            names[i] = "sp"
-    c = 0
-    for i in range(len(seq) - 1, -1, -1):
-        if names[i] != "sp":
-            names[i] = "final"
-            c += 1
-            if c >= final_k:
-                break
-    off = np.empty(len(seq), dtype=np.float32)
-    for i, cn in enumerate(names):
-        d = None
-        if emotion is not None:
-            d = calib.get("per_emotion", {}).get(f"{cn}|{emotion}")
-        if d is None:
-            d = calib["classes"][cn]
-        off[i] = d["offset"] * scale
-    # Length-bin extra: the per-token under-prediction grows with utterance
-    # length; add the phone-count-binned residual correction to every token.
-    lb = calib.get("length_bins")
-    if lb:
-        b = int(np.digitize(len(seq), lb["boundaries"]))
-        off += np.float32(lb["extra"][b] * scale)
-    return off
-
-
-def build_duration_floor(seq, final_k=3, final_min=5):
-    """Per-token MINIMUM frame counts for VarianceAdaptor.infer_d_floor.
-    The audible trailing-word cut can occur even when total length is ample:
-    the predictor starves the FINAL phonemes to ~1 frame (12ms, inaudible) --
-    a multiplicative offset can't revive a near-zero, a floor can. Last
-    final_k non-silence tokens get >= final_min frames (5 ~ 58ms); everything
-    else keeps the global min of 1."""
-    from text.symbols import symbols
-    sil_ids = {symbols.index(s) for s in ("@sp", "@spn", "@sil")}
-    floor = np.ones(len(seq), dtype=np.float32)
-    c = 0
-    for i in range(len(seq) - 1, -1, -1):
-        if int(seq[i]) not in sil_ids:
-            floor[i] = final_min
-            c += 1
-            if c >= final_k:
-                break
-    return floor
-
-
 def to_device(data, device):
     if len(data) in (17, 18, 19):
         # The 19-tuple carries the speaker embedding (the speaker channel) as its

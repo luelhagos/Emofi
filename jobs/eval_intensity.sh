@@ -8,6 +8,10 @@
 #                       from the face instead of read from the filename (the
 #                       true three-input setting; also prints the face->level
 #                       prediction accuracy).
+#   PREDICT_LEVEL=2  -> continuous image-only condition: the expected level
+#                       from the face head's probabilities interpolates the
+#                       postfilter level embedding, with the residual ramped in
+#                       below t=0.5 (--predict_level_expected --pf_ramp).
 # Prereq: a postfilter checkpoint at ./output/ckpt/MEAD_intensity/<STEP>.pth.tar,
 #         the SER judge checkpoint (see ser_judge/README.md), data under ./data/.
 set -e
@@ -22,6 +26,9 @@ FLAGS="--postfilter_refine --postfilter_levels level2,level3"
 if [ "${PREDICT_LEVEL:-0}" = "1" ]; then
     FLAGS="$FLAGS --predict_level"
     OUT=${OUT}_imageonly
+elif [ "${PREDICT_LEVEL:-0}" = "2" ]; then
+    FLAGS="$FLAGS --predict_level_expected --pf_ramp"
+    OUT=${OUT}_imageonly_expected
 fi
 
 mkdir -p eval

@@ -17,7 +17,6 @@ import torchaudio.transforms as T
 from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 
 
-# -- Label maps ----------------------------------------------------------------
 
 EMOTIONS = ["angry", "fear", "happy", "surprised", "sad", "neutral"]
 LEVELS   = ["level1", "level2", "level3"]
@@ -50,7 +49,6 @@ print(f"[dataset] joint classes: {NUM_JOINT_CLASSES}, "
       f"intensity classes: {NUM_LEVEL_CLASSES}")
 
 
-# -- Dataset -------------------------------------------------------------------
 
 class MEADDataset(Dataset):
     """
@@ -90,7 +88,7 @@ class MEADDataset(Dataset):
 
         self.samples = self._load_filelist(filelist_path)
 
-    # -- internal helpers ------------------------------------------------------
+    # internal helpers
 
     def _load_filelist(self, path: str):
         samples = []
@@ -179,7 +177,7 @@ class MEADDataset(Dataset):
 
         return waveform
 
-    # -- public API ------------------------------------------------------------
+    # public API
 
     def __len__(self):
         return len(self.samples)
@@ -208,7 +206,7 @@ class MEADDataset(Dataset):
 
         return item
 
-    # -- class-weight helpers --------------------------------------------------
+    # class-weight helpers
 
     def get_class_weights(self) -> dict:
         """
@@ -255,7 +253,6 @@ class MEADDataset(Dataset):
         return weights
 
 
-# -- collate (handles variable-length if max_duration is disabled) -------------
 
 def collate_fn(batch):
     """Pads waveforms in a batch to the same length."""
@@ -287,7 +284,7 @@ def collate_fn_synthesized(batch):
 
     out = {"waveform": waveforms}
 
-    # -- labels --
+    # labels
     if "label" in batch[0]:
         out["label"] = torch.stack([item["label"] for item in batch])
 
@@ -295,14 +292,13 @@ def collate_fn_synthesized(batch):
         out["emotion_label"] = torch.stack([item["emotion_label"] for item in batch])
         out["level_label"]   = torch.stack([item["level_label"]   for item in batch])
 
-    # -- keep filenames --
+    # keep filenames
     if "filename" in batch[0]:
         out["filename"] = [item["filename"] for item in batch]
 
     return out
 
 
-# -- quick test ----------------------------------------------------------
 
 if __name__ == "__main__":
     import sys

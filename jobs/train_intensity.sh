@@ -6,9 +6,10 @@
 #         ./data/. Checkpoints are written to ./output/ckpt/MEAD_intensity/.
 #
 # The backbone is frozen; only the postfilter generator and discriminator train.
-# The SER feature-matching loss (the decisive term) vocodes each refined mel and
-# matches its frozen-SSL features to the vocoded ground-truth mel, for all three
-# intensity levels. At inference apply the postfilter to level2/level3 only
+# The SER feature-matching loss vocodes each refined mel and matches its
+# frozen-SSL features to the vocoded ground-truth mel, for all three
+# intensity levels (--serfm_all_levels; without it only level3 utterances are
+# matched). At inference apply the postfilter to level2/level3 only
 # (see jobs/eval_intensity.sh); low-intensity utterances bypass it.
 
 cd "$(dirname "$0")/.." || exit 1
@@ -33,4 +34,5 @@ CUDA_VISIBLE_DEVICES=${1:-0} python3 train.py \
     --lambda_serfm 10.0 \
     --serfm_model facebook/wav2vec2-base \
     --serfm_layer 4 \
+    --serfm_all_levels \
     --freeze_backbone_for_postfilter

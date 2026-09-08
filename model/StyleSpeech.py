@@ -141,7 +141,7 @@ class StyleSpeech(nn.Module):
             return self.combine_linear(torch.cat([face_style, ref_style], dim=-1))
         raise ValueError(f"Unknown combine_mode: {combine_mode!r}")
 
-    # ---- intensity postfilter ------------------------------------------------
+    # intensity postfilter
 
     def postfilter_refine(self, mu, style_vector, level=None, level_weights=None):
         """Inference: refine mu -> mu + Delta. mu: (B, T, n_mel); style_vector:
@@ -271,8 +271,8 @@ class StyleSpeech(nn.Module):
         mel_masks = get_mask_from_lengths(mel_lens, max_mel_len)
 
         if face_embs is not None and combine_mode is not None:
-            # Three-input factorization -- face = emotion, speaker channel is
-            # EITHER a mel-style ref (mel_style_encoder) OR a pretrained ECAPA
+            # Three-input factorization -- face = emotion; the speaker channel is
+            # either a mel-style ref (mel_style_encoder) or a pretrained ECAPA
             # speaker embedding (spk_to_style). The face half is identical; only
             # the speaker component differs.
             face_style = self.face_to_style(face_embs).unsqueeze(1)   # (B, 1, H)

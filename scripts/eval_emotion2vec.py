@@ -8,7 +8,7 @@ Two outputs per synthesized directory:
      label in the filename (<spk>_<emotion>_<level>_<idx>.wav). The same judge
      is run on the real test audio first, which gives this judge's own ceiling.
   2. Emotion-embedding similarity: cosine between each synthesized utterance's
-     emotion2vec embedding and (a) the SAME utterance's real-audio embedding,
+     emotion2vec embedding and (a) the same utterance's real-audio embedding,
      (b) the real-audio centroid of its emotion vs the best other-emotion
      centroid (margin > 0 means the synth sits in the right emotion region).
 
@@ -43,7 +43,7 @@ def load_model(name, hub, device):
 
 
 def label_names(labels):
-    """emotion2vec labels look like '生气/angry'; keep the part after '/'."""
+    """emotion2vec labels are '<chinese>/<english>' pairs; keep the part after '/'."""
     return [l.split("/")[-1].strip().lower() for l in labels]
 
 

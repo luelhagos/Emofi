@@ -12,7 +12,6 @@ import torch.nn as nn
 from transformers import Wav2Vec2Model
 
 
-# -- Ordinal loss ---------------------------------------------------------------
 
 class OrdinalLoss(nn.Module):
     """
@@ -21,7 +20,7 @@ class OrdinalLoss(nn.Module):
         level2 ==> [1, 0]
         level3 ==> [1, 1]
 
-    level2_weight applies extra loss to level2 samples on BOTH thresholds,
+    level2_weight applies extra loss to level2 samples on both thresholds,
     since level2 is confused in both directions (==> level1 and ==> level3).
     """
 
@@ -53,7 +52,6 @@ class OrdinalLoss(nn.Module):
         return (probs > 0.5).long().sum(dim=1)
 
 
-# -- Attentive pooling ---------------------------------------------------------
 
 class AttentivePooling(nn.Module):
     """
@@ -90,7 +88,6 @@ class AttentivePooling(nn.Module):
         return pooled
 
 
-# -- Model ----------------------------------------------------------------------
 
 class EmotionClassifier(nn.Module):
     """
@@ -119,10 +116,10 @@ class EmotionClassifier(nn.Module):
         freeze_cnn: bool = True,
         freeze_encoder_layers: int = 4,
         dropout: float = 0.2,
-        emotion_context_dim: int = 128,    # increased from 64
+        emotion_context_dim: int = 128,
         use_ordinal: bool = True,
         level2_weight: float = 2.0,
-        use_attentive_pool: bool = True,   # new
+        use_attentive_pool: bool = True,
     ):
         super().__init__()
 
@@ -134,14 +131,14 @@ class EmotionClassifier(nn.Module):
 
         self.encoder = Wav2Vec2Model.from_pretrained(pretrained_name)
 
-        # -- freeze CNN --------------------------------------------------------
+        # freeze CNN
         if freeze_cnn:
             for p in self.encoder.feature_extractor.parameters():
                 p.requires_grad = False
             for p in self.encoder.feature_projection.parameters():
                 p.requires_grad = True
 
-        # -- freeze bottom transformer layers ----------------------------------
+        # freeze bottom transformer layers
         if freeze_encoder_layers > 0:
             layers   = self.encoder.encoder.layers
             n_freeze = min(freeze_encoder_layers, len(layers))
@@ -154,7 +151,7 @@ class EmotionClassifier(nn.Module):
 
         hidden = self.encoder.config.hidden_size   # 768 for wav2vec2-base
 
-        # -- pooling -----------------------------------------------------------
+        # pooling
         if use_attentive_pool:
             self.pooling = AttentivePooling(hidden)
             print("[model] pooling: attentive")
@@ -167,10 +164,10 @@ class EmotionClassifier(nn.Module):
         if label_mode == "joint":
             self.joint_head = nn.Linear(hidden, num_joint)
         else:
-            # -- emotion head --------------------------------------------------
+            # emotion head
             self.emotion_head = nn.Linear(hidden, num_emotions)
 
-            # -- intensity head (emotion-conditioned, deeper) ------------------
+            # intensity head (emotion-conditioned, deeper)
             # emotion logits ==> projection ==> concat with pooled ==> two-layer MLP
             self.intensity_proj = nn.Sequential(
                 nn.Linear(num_emotions, emotion_context_dim),
@@ -193,7 +190,7 @@ class EmotionClassifier(nn.Module):
 
         self._print_param_counts()
 
-    # -- helpers ---------------------------------------------------------------
+    # helpers
 
     def _print_param_counts(self):
         total     = sum(p.numel() for p in self.parameters())
@@ -226,7 +223,7 @@ class EmotionClassifier(nn.Module):
             pooled = hidden.mean(dim=1)
         return pooled
 
-    # -- forward ---------------------------------------------------------------
+    # forward
 
     def forward(self, waveform: torch.Tensor, attention_mask: torch.Tensor = None):
         """
@@ -257,7 +254,7 @@ class EmotionClassifier(nn.Module):
 
         return e_logits, i_logits
 
-    # -- convenience -----------------------------------------------------------
+    # convenience
 
     def predict(self, waveform: torch.Tensor):
         self.eval()
@@ -272,7 +269,6 @@ class EmotionClassifier(nn.Module):
         return e_preds, i_preds
 
 
-# -- smoke-test ----------------------------------------------------------------
 
 if __name__ == "__main__":
     model = EmotionClassifier(

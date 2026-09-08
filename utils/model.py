@@ -9,10 +9,11 @@ from model import StyleSpeech, ScheduledOptimMain, ScheduledOptimDisc
 
 
 def load_pretrained(model, ckpt_path):
-    """Load a foreign checkpoint into `model`, skipping keys that don't exist in
-    the target or have a shape mismatch. Used to warm-start from a base checkpoint
-    when the target model has new layers (face_to_style, emotion_aux_head) and a
-    different style_prototype size.
+    """Warm-start `model` from a checkpoint of a different architecture: load
+    every parameter whose name and shape match, and skip the rest (layers the
+    checkpoint does not have, or tensors whose size differs). Lets a pretrained
+    backbone initialize a model that adds new layers (face_to_style, aux heads)
+    or uses a different style_prototype size.
     """
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     src = ckpt.get("model", ckpt)   # supports {"model": sd} or a raw state_dict

@@ -26,10 +26,10 @@ import yaml
 from scipy.io import wavfile
 from tqdm import tqdm
 
-sys.path.insert(0, ".")  # so `import text`, `import utils.*` resolve from repo root
+sys.path.insert(0, ".")
 from text import text_to_sequence
 from utils.model import get_model, get_vocoder
-from utils.tools import pad_1D, pad_2D, build_duration_calib_offset
+from utils.tools import pad_1D, pad_2D
 
 
 def parse_args():
@@ -65,7 +65,7 @@ def parse_args():
                    help="Predict the intensity level from the face (intensity aux "
                         "head) instead of reading it from the filename -- the "
                         "image-only condition, in which the face supplies both the "
-                        "emotion and its grade. Default OFF = the filename (oracle) "
+                        "emotion and its grade. Default off = the filename (oracle) "
                         "level.")
     p.add_argument("--level_interp", type=float, default=None,
                    help="Continuous intensity control: a value t in [0, 2] mapped "
@@ -73,11 +73,16 @@ def parse_args():
                         "interpolation (0=level1, 1=level2, 2=level3). Applies the "
                         "postfilter to every utterance with the interpolated "
                         "embedding (the level gate is bypassed).")
-    p.add_argument("--duration_calib", type=str, default=None,
-                   help="JSON of per-token-class log-duration offsets fitted on "
-                        "held-out data (duration debias; see "
-                        "utils.tools.build_duration_calib_offset). Applied at "
-                        "inference only; no retraining.")
+    p.add_argument("--pf_ramp", action="store_true",
+                   help="With --level_interp or --predict_level_expected, scale the "
+                        "postfilter residual by min(1, t / 0.5) so t=0 is the exact "
+                        "identity and the t<0.5 bypass becomes a linear fade.")
+    p.add_argument("--predict_level_expected", action="store_true",
+                   help="Continuous image-only intensity: t = expected level from the "
+                        "intensity head's probabilities (sum_l p_l*l in [0, 2]) "
+                        "interpolates the postfilter level embedding per utterance; "
+                        "t < 0.5 bypasses the postfilter unless --pf_ramp is set. "
+                        "Mutually exclusive with --predict_level and --level_interp.")
     return p.parse_args()
 
 
@@ -125,13 +130,30 @@ def main():
                          if args.postfilter_levels else None)
     LEVELS = ("level1", "level2", "level3")
     pred_log = []    # --predict_level: (filename level, predicted level)
+    tval_log = []    # --predict_level_expected: (filename level, continuous t)
 
-    calib = None
-    if args.duration_calib:
-        import json
-        with open(os.path.expandvars(os.path.expanduser(args.duration_calib))) as f:
-            calib = json.load(f)
-        print(f"[duration debias] offsets loaded from {args.duration_calib}")
+    if args.predict_level_expected and (args.predict_level
+                                        or args.level_interp is not None):
+        raise SystemExit("--predict_level_expected is mutually exclusive with "
+                         "--predict_level and --level_interp.")
+
+    def _refine_interp(mel_pred, style_vec, t, bypass_below=None):
+        """Postfilter with the level embedding linearly interpolated at t in
+        [0, 2] (0=level1, 1=level2, 2=level3). Without --pf_ramp, t below
+        `bypass_below` returns the decoder mel unchanged; with --pf_ramp the
+        residual is scaled by s = min(1, t / 0.5), so t=0 is the identity."""
+        if not args.pf_ramp and bypass_below is not None and t < bypass_below:
+            return mel_pred
+        lo = min(int(t), 1)
+        frac = t - lo
+        w = torch.zeros(1, 3, device=device)
+        w[0, lo] = 1.0 - frac
+        w[0, lo + 1] = frac
+        refined = model.postfilter_refine(mel_pred, style_vec, level_weights=w)
+        if args.pf_ramp:
+            s = min(1.0, t / 0.5)
+            return mel_pred + s * (refined - mel_pred)
+        return refined
 
     def _synth_one(seq, mel, face_embs, spk_embs=None, level=None, emotion=None):
         """Run a single forward (+ optional postfilter) + vocoder.
@@ -143,10 +165,6 @@ def main():
         mels        = torch.from_numpy(pad_2D([mel])).float().to(device)
         mel_lens    = torch.from_numpy(mel_lens_np).to(device)
         with torch.no_grad():
-            if calib is not None:
-                off = build_duration_calib_offset(seq, calib, emotion=emotion)
-                model.variance_adaptor.infer_log_d_offset = (
-                    torch.from_numpy(off).unsqueeze(0).to(device))
             output = model(
                 None,
                 texts, src_lens, int(text_lens[0]),
@@ -156,7 +174,6 @@ def main():
                 spk_embs=spk_embs,
                 combine_mode=args.combine_mode,
             )
-            model.variance_adaptor.infer_log_d_offset = None
             mel_pred = output[0]                       # (1, T, 80)
 
             if args.postfilter_refine:
@@ -170,16 +187,20 @@ def main():
                     level = LEVELS[pred]
                 style_vec = model.compute_style_vector(
                     face_embs, spk_embs=spk_embs, combine_mode=args.combine_mode)
-                if args.level_interp is not None:
+                if args.predict_level_expected:
+                    # Continuous image-only control: t = expected level under
+                    # the intensity head's softmax; t < 0.5 bypasses.
+                    probs = model.compute_intensity_aux(face_embs).softmax(-1).squeeze(0)
+                    t = float((probs * torch.arange(
+                        3, device=probs.device, dtype=probs.dtype)).sum())
+                    if level is not None:
+                        pred_log.append((level, LEVELS[int(round(t))]))
+                        tval_log.append((level, t))
+                    mel_pred = _refine_interp(mel_pred, style_vec, t, bypass_below=0.5)
+                elif args.level_interp is not None:
                     # Continuous control: soft mixture over the level embeddings.
                     t = min(max(float(args.level_interp), 0.0), 2.0)
-                    lo = min(int(t), 1)
-                    frac = t - lo
-                    w = torch.zeros(1, 3, device=device)
-                    w[0, lo] = 1.0 - frac
-                    w[0, lo + 1] = frac
-                    mel_pred = model.postfilter_refine(mel_pred, style_vec,
-                                                       level_weights=w)
+                    mel_pred = _refine_interp(mel_pred, style_vec, t)
                 elif postfilter_levels is None or level in postfilter_levels:
                     lvl_idx = (torch.tensor([LEVELS.index(level)], device=device)
                                if level in LEVELS else None)
@@ -242,6 +263,14 @@ def main():
             conf = {l: sum(1 for p in sub if p == l) for l in LEVELS}
             print(f"  {gl}: recall {rec:.3f} (n={len(sub)})  -> "
                   + " ".join(f"{l}:{conf[l]}" for l in LEVELS))
+
+    if tval_log:
+        print("[expected-level t] per filename level (mean +/- std):")
+        for gl in LEVELS:
+            ts = np.array([t for g, t in tval_log if g == gl])
+            if len(ts):
+                print(f"  {gl}: t {ts.mean():.3f} +/- {ts.std():.3f}  (n={len(ts)}; "
+                      f"t<0.5: {(ts < 0.5).mean():.1%})")
 
 
 if __name__ == "__main__":

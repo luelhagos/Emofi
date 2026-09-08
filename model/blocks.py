@@ -35,7 +35,7 @@ class StyleAdaptiveLayerNorm(nn.Module):
         # Get Bias and Gain
         b, g = torch.split(self.affine_layer(w), self.hidden_size, dim=-1)  # [B, 1, 2 * H_m] --> 2 * [B, 1, H_m]
 
-        # Perform Scailing and Shifting
+        # Perform scaling and shifting
         o = g * y + b # [B, T, H_m]
 
         return o

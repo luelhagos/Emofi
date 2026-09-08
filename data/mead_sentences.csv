@@ -1,0 +1,252 @@
+emotion,proposed_clip_id,segment,index_within_segment,sentence
+neutral,001,common,1,She had your dark suit in greasy wash water all year
+neutral,002,common,2,Don't ask me to carry an oily rag like that
+neutral,003,common,3,Will you tell me why
+neutral,004,generic,1,Todd placed top priority on getting his bike fixed
+neutral,005,generic,2,One even gave my little dog a biscuit
+neutral,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+neutral,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+neutral,008,generic,5,The plaintiff in school desegregation cases
+neutral,009,generic,6,Land based radar would help with this task
+neutral,010,generic,7,It was not whatever tale was told by tails
+neutral,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+neutral,012,generic,9,No price is too high when true love is at stake
+neutral,013,generic,10,The revolution now under way in materials handling makes this much easier
+neutral,014,emotion_specific,1,Bridges tunnels and ferries are the most common methods of river crossings
+neutral,015,emotion_specific,2,The moment of truth is the moment of crisis
+neutral,016,emotion_specific,3,The best way to learn is to solve extra problems
+neutral,017,emotion_specific,4,Thereupon followed a demonstration that tyranny knows no ideological confines
+neutral,018,emotion_specific,5,Calcium makes bones and teeth strong
+neutral,019,emotion_specific,6,Catastrophic economic cutbacks neglect the poor
+neutral,020,emotion_specific,7,Allow leeway here but rationalize all errors
+neutral,021,emotion_specific,8,Greg buys fresh milk each weekday morning
+neutral,022,emotion_specific,9,Agricultural products are unevenly distributed
+neutral,023,emotion_specific,10,The nearest synagogue may not be within walking distance
+neutral,024,emotion_specific,11,As such it was beyond politics and had no need of justification by a message
+neutral,025,emotion_specific,12,He always seemed to have money in his pocket
+neutral,026,emotion_specific,13,No return address whatsoever
+neutral,027,emotion_specific,14,Keep your seats boys I just want to put some finishing touches on this thing
+neutral,028,emotion_specific,15,He ripped down the cellophane carefully and laid three dogs on the tin foil
+neutral,029,emotion_specific,16,Who authorized the unlimited expense account
+neutral,030,emotion_specific,17,Destroy every file related to my audits
+neutral,031,emotion_specific,18,Please take this dirty table cloth to the cleaners for me
+neutral,032,emotion_specific,19,The small boy put the worm on the hook
+neutral,033,emotion_specific,20,Call an ambulance for medical assistance
+neutral,034,emotion_specific,21,Tornado's often destroy acres of farm land
+neutral,035,emotion_specific,22,The carpet cleaners shampooed our oriental rug
+neutral,036,emotion_specific,23,His shoulder felt as if it were broken
+neutral,037,emotion_specific,24,The prospect of cutting back spending is an unpleasant one for any governor
+neutral,038,emotion_specific,25,The diagnosis was discouraging however he was not overly worried
+neutral,039,emotion_specific,26,Those musicians harmonize marvelously
+neutral,040,emotion_specific,27,The eastern coast is a place for pure pleasure and excitement
+angry,001,common,1,She had your dark suit in greasy wash water all year
+angry,002,common,2,Don't ask me to carry an oily rag like that
+angry,003,common,3,Will you tell me why
+angry,004,generic,1,Todd placed top priority on getting his bike fixed
+angry,005,generic,2,One even gave my little dog a biscuit
+angry,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+angry,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+angry,008,generic,5,The plaintiff in school desegregation cases
+angry,009,generic,6,Land based radar would help with this task
+angry,010,generic,7,It was not whatever tale was told by tails
+angry,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+angry,012,generic,9,No price is too high when true love is at stake
+angry,013,generic,10,The revolution now under way in materials handling makes this much easier
+angry,014,emotion_specific,1,Who authorized the unlimited expense account
+angry,015,emotion_specific,2,Destroy every file related to my audits
+angry,016,emotion_specific,3,The cat's meow always hurts my ears
+angry,017,emotion_specific,4,Why else would Danny allow others to go
+angry,018,emotion_specific,5,Why do we need bigger and better bombs
+angry,019,emotion_specific,6,Nuclear rockets can destroy airfields with ease
+angry,020,emotion_specific,7,You're so preoccupied that you've let your faith grow dim
+angry,021,emotion_specific,8,Cory and Trish played tag with beach balls for hours
+angry,022,emotion_specific,9,He will allow a rare lie
+angry,023,emotion_specific,10,Withdraw all phony accusations at once
+angry,024,emotion_specific,11,Right now may not be the best time for business mergers
+angry,025,emotion_specific,12,Kindergarten children decorate their classrooms for all holidays
+angry,026,emotion_specific,13,A few years later the dome fell in
+angry,027,emotion_specific,14,But in this one section we welcomed auditors
+angry,028,emotion_specific,15,Lot of people will roam the streets in costumes and masks and having a ball
+angry,029,emotion_specific,16,In many of his poems death comes by train a strongly evocative visual image
+angry,030,emotion_specific,17,Then he would realize they were really things that only he himself could think
+disgust,001,common,1,She had your dark suit in greasy wash water all year
+disgust,002,common,2,Don't ask me to carry an oily rag like that
+disgust,003,common,3,Will you tell me why
+disgust,004,generic,1,Todd placed top priority on getting his bike fixed
+disgust,005,generic,2,One even gave my little dog a biscuit
+disgust,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+disgust,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+disgust,008,generic,5,The plaintiff in school desegregation cases
+disgust,009,generic,6,Land based radar would help with this task
+disgust,010,generic,7,It was not whatever tale was told by tails
+disgust,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+disgust,012,generic,9,No price is too high when true love is at stake
+disgust,013,generic,10,The revolution now under way in materials handling makes this much easier
+disgust,014,emotion_specific,1,Please take this dirty table cloth to the cleaners for me
+disgust,015,emotion_specific,2,The small boy put the worm on the hook
+disgust,016,emotion_specific,3,You're not living up to your own principles she told my discouraged people
+disgust,017,emotion_specific,4,Don't do Charlie's dirty dishes
+disgust,018,emotion_specific,5,Will Robin wear a yellow lily
+disgust,019,emotion_specific,6,Young children should avoid exposure to contagious diseases
+disgust,020,emotion_specific,7,Military personnel are expected to obey government orders
+disgust,021,emotion_specific,8,Basketball can be an entertaining sport
+disgust,022,emotion_specific,9,How good is your endurance
+disgust,023,emotion_specific,10,Barb burned paper and leaves in a big bonfire
+disgust,024,emotion_specific,11,December and January are nice months to spend in Miami
+disgust,025,emotion_specific,12,If people were more generous there would be no need for welfare
+disgust,026,emotion_specific,13,If the farm is rented the rent must be paid
+disgust,027,emotion_specific,14,Laboratory astrophysics
+disgust,028,emotion_specific,15,Pretty soon a woman came along carrying a folded umbrella as a walking stick
+disgust,029,emotion_specific,16,How much and how many profits could a majority take out of the losses of a few
+disgust,030,emotion_specific,17,Does society really exist as an entity over and above the agglomeration of men
+contempt,001,common,1,She had your dark suit in greasy wash water all year
+contempt,002,common,2,Don't ask me to carry an oily rag like that
+contempt,003,common,3,Will you tell me why
+contempt,004,generic,1,Todd placed top priority on getting his bike fixed
+contempt,005,generic,2,One even gave my little dog a biscuit
+contempt,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+contempt,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+contempt,008,generic,5,The plaintiff in school desegregation cases
+contempt,009,generic,6,Land based radar would help with this task
+contempt,010,generic,7,It was not whatever tale was told by tails
+contempt,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+contempt,012,generic,9,No price is too high when true love is at stake
+contempt,013,generic,10,The revolution now under way in materials handling makes this much easier
+contempt,014,emotion_specific,1,Are your grades higher or lower than Nancy's
+contempt,015,emotion_specific,2,This was easy for us
+contempt,016,emotion_specific,3,Only lawyers love millionaires
+contempt,017,emotion_specific,4,It's illegal to postdate a check
+contempt,018,emotion_specific,5,He stole a dime from a beggar
+contempt,019,emotion_specific,6,His failure to open the store by eight cost him his job
+contempt,020,emotion_specific,7,Let us differentiate a few of these ideas
+contempt,021,emotion_specific,8,The big dog loved to chew on the old rag doll
+contempt,022,emotion_specific,9,Family loyalties and cooperative work have been unbroken for generations
+contempt,023,emotion_specific,10,Withdraw only as much money as you need
+contempt,024,emotion_specific,11,The way is to rent a chauffeur driven car
+contempt,025,emotion_specific,12,No one material is best for all situations
+contempt,026,emotion_specific,13,Mosquitoes exist in warm humid climates
+contempt,027,emotion_specific,14,We of the liberal led world got all set for peace and rehabilitation
+contempt,028,emotion_specific,15,Can your insurance company aid you in reducing administrative costs
+contempt,029,emotion_specific,16,She sprang up and went swiftly to the bedroom
+contempt,030,emotion_specific,17,He ate four extra eggs for breakfast
+fear,001,common,1,She had your dark suit in greasy wash water all year
+fear,002,common,2,Don't ask me to carry an oily rag like that
+fear,003,common,3,Will you tell me why
+fear,004,generic,1,Todd placed top priority on getting his bike fixed
+fear,005,generic,2,One even gave my little dog a biscuit
+fear,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+fear,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+fear,008,generic,5,The plaintiff in school desegregation cases
+fear,009,generic,6,Land based radar would help with this task
+fear,010,generic,7,It was not whatever tale was told by tails
+fear,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+fear,012,generic,9,No price is too high when true love is at stake
+fear,013,generic,10,The revolution now under way in materials handling makes this much easier
+fear,014,emotion_specific,1,Call an ambulance for medical assistance
+fear,015,emotion_specific,2,Tornado's often destroy acres of farm land
+fear,016,emotion_specific,3,Destroy every file related to my audits
+fear,017,emotion_specific,4,Would you allow acts of violence
+fear,018,emotion_specific,5,The high security prison was surrounded by barbed wire
+fear,019,emotion_specific,6,His shoulder felt as if it were broken
+fear,020,emotion_specific,7,The fish began to leap frantically on the surface of the small lake
+fear,021,emotion_specific,8,Straw hats are out of fashion this year
+fear,022,emotion_specific,9,That diagram makes sense only after much study
+fear,023,emotion_specific,10,Special task forces rescue hostages from kidnappers
+fear,024,emotion_specific,11,The tooth fairy forgot to come when Roger's tooth fell out
+fear,025,emotion_specific,12,Will Robin wear a yellow lily
+fear,026,emotion_specific,13,Their props were two stepladders a chair and a palm fan
+fear,027,emotion_specific,14,This is a problem that goes considerably beyond questions of salary and tenure
+fear,028,emotion_specific,15,The pulsing glow of a cigarette
+fear,029,emotion_specific,16,One looked down on a sea of leaves a breaking wave of flower
+fear,030,emotion_specific,17,We will achieve a more vivid sense of what it is by realizing what it is not
+happy,001,common,1,She had your dark suit in greasy wash water all year
+happy,002,common,2,Don't ask me to carry an oily rag like that
+happy,003,common,3,Will you tell me why
+happy,004,generic,1,Todd placed top priority on getting his bike fixed
+happy,005,generic,2,One even gave my little dog a biscuit
+happy,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+happy,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+happy,008,generic,5,The plaintiff in school desegregation cases
+happy,009,generic,6,Land based radar would help with this task
+happy,010,generic,7,It was not whatever tale was told by tails
+happy,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+happy,012,generic,9,No price is too high when true love is at stake
+happy,013,generic,10,The revolution now under way in materials handling makes this much easier
+happy,014,emotion_specific,1,Those musicians harmonize marvelously
+happy,015,emotion_specific,2,The eastern coast is a place for pure pleasure and excitement
+happy,016,emotion_specific,3,Tim takes Sheila to see movies twice a week
+happy,017,emotion_specific,4,They used an aggressive policeman to flag thoughtless motorists
+happy,018,emotion_specific,5,When you're less fatigued things just naturally look brighter
+happy,019,emotion_specific,6,By that time perhaps something better can be done
+happy,020,emotion_specific,7,She found herself able to sing any role and any song which struck her fancy
+happy,021,emotion_specific,8,That noise problem grows more annoying each day
+happy,022,emotion_specific,9,Project development was proceeding too slowly
+happy,023,emotion_specific,10,The oasis was a mirage
+happy,024,emotion_specific,11,Are your grades higher or lower than Nancy's
+happy,025,emotion_specific,12,Serve the coleslaw after I add the oil
+happy,026,emotion_specific,13,By that one feels that magnetic forces are as general as electrical forces
+happy,027,emotion_specific,14,His artistic accomplishments guaranteed him entry into any social gathering
+happy,028,emotion_specific,15,He would not carry a brief case
+happy,029,emotion_specific,16,Obviously the bridal pair has many adjustments to make to their new situation
+happy,030,emotion_specific,17,Both the conditions and the complicity are documented in considerable detail
+sad,001,common,1,She had your dark suit in greasy wash water all year
+sad,002,common,2,Don't ask me to carry an oily rag like that
+sad,003,common,3,Will you tell me why
+sad,004,generic,1,Todd placed top priority on getting his bike fixed
+sad,005,generic,2,One even gave my little dog a biscuit
+sad,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+sad,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+sad,008,generic,5,The plaintiff in school desegregation cases
+sad,009,generic,6,Land based radar would help with this task
+sad,010,generic,7,It was not whatever tale was told by tails
+sad,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+sad,012,generic,9,No price is too high when true love is at stake
+sad,013,generic,10,The revolution now under way in materials handling makes this much easier
+sad,014,emotion_specific,1,The prospect of cutting back spending is an unpleasant one for any governor
+sad,015,emotion_specific,2,The diagnosis was discouraging however he was not overly worried
+sad,016,emotion_specific,3,We can die too we can die like real people People never live forever
+sad,017,emotion_specific,4,He didn't figure her at all and if he found out a woman it'd be bad
+sad,018,emotion_specific,5,There would still be plenty of moments of regret and sadness and guilty relief
+sad,019,emotion_specific,6,She drank greedily and murmured thank you as he lowered her head
+sad,020,emotion_specific,7,There's no chance now of all of us getting away
+sad,021,emotion_specific,8,Before Thursday's exam review every formula
+sad,022,emotion_specific,9,They enjoy it when I audition
+sad,023,emotion_specific,10,John cleans shellfish for a living
+sad,024,emotion_specific,11,He stole a dime from a beggar
+sad,025,emotion_specific,12,Jeff thought you argued in favor of a centrifuge purchase
+sad,026,emotion_specific,13,However the litter remained augmented by several dozen lunchroom suppers
+sad,027,emotion_specific,14,American newspaper reviewers like to call his plays nihilistic
+sad,028,emotion_specific,15,But the ships are very slow now and we don't get so many sailors any more
+sad,029,emotion_specific,16,It is one of the rare public ventures here on which nearly everyone is agreed
+sad,030,emotion_specific,17,No manufacturer has taken the initiative in pointing out the costs involved
+surprise,001,common,1,She had your dark suit in greasy wash water all year
+surprise,002,common,2,Don't ask me to carry an oily rag like that
+surprise,003,common,3,Will you tell me why
+surprise,004,generic,1,Todd placed top priority on getting his bike fixed
+surprise,005,generic,2,One even gave my little dog a biscuit
+surprise,006,generic,3,I'll have a scoop of that exotic purple and turquoise sherbet
+surprise,007,generic,4,His superiors had also preached this saying it was the way for eternal honor
+surprise,008,generic,5,The plaintiff in school desegregation cases
+surprise,009,generic,6,Land based radar would help with this task
+surprise,010,generic,7,It was not whatever tale was told by tails
+surprise,011,generic,8,No the man was not drunk he wondered how he got tied up with this stranger
+surprise,012,generic,9,No price is too high when true love is at stake
+surprise,013,generic,10,The revolution now under way in materials handling makes this much easier
+surprise,014,emotion_specific,1,The carpet cleaners shampooed our oriental rug
+surprise,015,emotion_specific,2,His shoulder felt as if it were broken
+surprise,016,emotion_specific,3,The patient and the surgeon are both recuperating from the lengthy operation
+surprise,017,emotion_specific,4,He ate four extra eggs for breakfast
+surprise,018,emotion_specific,5,While waiting for Chipper she crisscrossed the square many times
+surprise,019,emotion_specific,6,I just saw Jim near the new archeological museum
+surprise,020,emotion_specific,7,I took her word for it but is she really going with you
+surprise,021,emotion_specific,8,The viewpoint overlooked the ocean
+surprise,022,emotion_specific,9,I'd ride the subway but I haven't enough change
+surprise,023,emotion_specific,10,The clumsy customer spilled some expensive perfume
+surprise,024,emotion_specific,11,Please dig my potatoes up before frost
+surprise,025,emotion_specific,12,Grandmother outgrew her upbringing in petticoats
+surprise,026,emotion_specific,13,Salvation reconsidered
+surprise,027,emotion_specific,14,Properly used the present book is an excellent instrument of enlightenment
+surprise,028,emotion_specific,15,Lighted windows glowed jewel bright through the downpour
+surprise,029,emotion_specific,16,But this doesn't detract from its merit as an interesting if not great film
+surprise,030,emotion_specific,17,He further proposed grants of an unspecified sum for experimental Hospitals
+

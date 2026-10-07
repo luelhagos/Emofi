@@ -1,4 +1,4 @@
-# TriVox-TTS
+# Emofi-TTS
 
 Face-conditioned emotional text-to-speech with disentangled control: a **face
 image** drives the emotion and its intensity, a **reference utterance** drives the
@@ -64,7 +64,7 @@ pip install -r requirements.txt
 ```
 The SER judge runs in its own environment (`ser_judge/requirements.txt`).
 
-**2. Download from the [trivox-tts](https://drive.google.com/drive/folders/1AMTuWvHln3T7sZAgLrt_7k8rKNE9Gm5n?usp=drive_link) Google Drive** and place the files as below
+**2. Download from the [emofi-tts](https://drive.google.com/drive/folders/1AMTuWvHln3T7sZAgLrt_7k8rKNE9Gm5n?usp=drive_link) Google Drive** and place the files as below
 (paths relative to the repo root):
 
 | Drive artifact | Place at | Used for |

@@ -12,8 +12,8 @@ The judge depends on `transformers` (Wav2Vec2).
 pip install -r ser_judge/requirements.txt
 ```
 
-Download **`best_model.pt`** from the [trivox-tts](https://drive.google.com/drive/folders/1AMTuWvHln3T7sZAgLrt_7k8rKNE9Gm5n?usp=drive_link) Drive into this folder
-(`ser_judge/best_model.pt`).
+The judge weights are not distributed with this repository yet. The code expects
+them at `ser_judge/best_model.pt`.
 
 ## Run
 

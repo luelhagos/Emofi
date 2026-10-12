@@ -5,13 +5,13 @@ that conditions the TTS model. Architecture: ResNet50 backbone + MLP projector
 to a 768-d embedding, with auxiliary emotion and intensity classification heads,
 distilled from emotion2vec (`iic/emotion2vec_plus_large`) audio embeddings.
 
-The encoder was developed by a project collaborator and is provided as a
-released checkpoint only. Training code is not included in this repository.
+The encoder was developed by a project collaborator; this folder contains the
+model definition and inference code only. Training code is not included.
 
 ## Checkpoint
 
-Download `face_encoder.pt` from the project Google Drive (see the top-level
-README) and place it at:
+The encoder weights are not distributed with this repository yet. The code
+expects them at:
 
 ```
 face_encoder/face_encoder.pt
@@ -40,8 +40,8 @@ python3 scripts/cache_face_embeddings.py \
     --out_dir      data/MEAD/face_emb_cache
 ```
 
-The preprocessed `data/MEAD/` drop from the Drive already contains this cache,
-so the encoder is only needed to embed new faces.
+The preprocessed `data/MEAD/` package contains this cache, so the encoder is
+only needed to embed new faces.
 
 Files:
 

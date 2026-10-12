@@ -1,7 +1,7 @@
 """
 Cache face-encoder embeddings for every MEAD utterance.
 
-Reads the face-encoder filelists (rows `<audio>|<face>|...`), runs the released
+Reads the face-encoder filelists (rows `<audio>|<face>|...`), runs the trained
 face encoder (face_encoder/) on each utterance's paired face image, and writes
 one L2-normalized (768,) tensor per utterance basename. Existing files are
 skipped. The TTS dataset loads these instead of running the encoder per batch.

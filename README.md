@@ -21,10 +21,10 @@ preprocess.py     extract mels / pitch / energy / durations from the aligned dat
 model/            StyleSpeech backbone (SALN), variance adaptor, losses,
                   postfilter.py (refinement module + mel discriminators), serfm.py (SER feature matching)
 utils/            checkpoint & vocoder loading (model.py); tensors / masks (tools.py)
-text/             text front end (phoneme symbols, text-to-sequence; the symbol table is fixed by the released checkpoints)
-hifigan/          HiFi-GAN vocoder code (generator weights from the Drive)
+text/             text front end (phoneme symbols, text-to-sequence; the symbol table is fixed by the trained checkpoints)
+hifigan/          HiFi-GAN vocoder code (generator weights are not included)
 lexicon/          grapheme-to-phoneme lexicon (only needed to phonemize new free-form text)
-face_encoder/     face encoder model definition + inference (checkpoint from the Drive; see face_encoder/README.md)
+face_encoder/     face encoder model definition + inference (see face_encoder/README.md)
 ser_judge/        Wav2Vec2 SER judge -> emotion + intensity WA/UA/per-level recall (own env; see ser_judge/README.md)
 
 config/MEAD/      preprocess.yaml (data & features); model.yaml + train.yaml (backbone);
@@ -64,27 +64,28 @@ pip install -r requirements.txt
 ```
 The SER judge runs in its own environment (`ser_judge/requirements.txt`).
 
-**2. Download from the [emofi-tts](https://drive.google.com/drive/folders/1AMTuWvHln3T7sZAgLrt_7k8rKNE9Gm5n?usp=drive_link) Google Drive** and place the files as below
-(paths relative to the repo root):
+**2. Models and data.** Pretrained checkpoints and the preprocessed MEAD package are
+not distributed with this repository yet; they will be released with the paper. The
+code expects:
 
-| Drive artifact | Place at | Used for |
-|---|---|---|
-| `MEAD/` (preprocessed) | `data/MEAD/` | mels, durations, pitch, energy, cached face + speaker embeddings, manifests |
-| `MEAD_processed/` | `data/MEAD_processed/` | real test wavs (real-audio ceilings; reference clips) |
-| `warmstart.pth.tar` | `output/ckpt/pretrained/warmstart.pth.tar` | backbone before the cross-speaker stage; `jobs/train.sh` starts here |
-| `backbone_30000.pth.tar` | `output/ckpt/MEAD/30000.pth.tar` | released backbone (after the cross-speaker stage); `jobs/train_intensity.sh` starts here |
-| `refinement_15000.pth.tar` | `output/ckpt/MEAD_intensity/15000.pth.tar` | released full system (backbone + refinement module); synthesis and evaluation load it as step 15000 |
-| `face_encoder.pt` | `face_encoder/` | face encoder weights (only needed to embed new face images) |
-| `generator_universal.pth.tar` | `hifigan/` | HiFi-GAN vocoder weights |
-| `best_model.pt` | `ser_judge/` | SER judge weights (emotion + intensity evaluation) |
+| Path | Contents |
+|---|---|
+| `data/MEAD/` | preprocessed features (mel, pitch, energy, duration), cached face + speaker embeddings, manifests, `stats.json` |
+| `data/MEAD_processed/` | real test wavs (real-audio ceilings; reference clips) |
+| `output/ckpt/pretrained/warmstart.pth.tar` | warm start for `jobs/train.sh` |
+| `output/ckpt/MEAD/<step>.pth.tar` | backbone checkpoints (written by `jobs/train.sh`) |
+| `output/ckpt/MEAD_intensity/<step>.pth.tar` | refinement checkpoints (written by `jobs/train_intensity.sh`) |
+| `hifigan/generator_universal.pth.tar` | HiFi-GAN vocoder weights |
+| `face_encoder/face_encoder.pt` | face encoder weights (only needed to embed new face images) |
+| `ser_judge/best_model.pt` | SER judge weights (evaluation only) |
 
-Face and speaker embeddings are already cached inside `data/MEAD/`, so neither
-encoder is needed to train or evaluate on MEAD.
+With the embedding caches inside `data/MEAD/`, neither encoder is needed to train or
+evaluate on MEAD.
 
 
-## Evaluate the released system
+## Evaluate a trained system
 
-Synthesize the test set with the released system in the image-only condition
+Synthesize the test set with a trained system in the image-only condition
 (emotion and intensity level both predicted from the face), then score it.
 `OUT` is any directory for the synthesized wavs.
 
@@ -126,12 +127,12 @@ the reference's emotion label for the factorization test.
 
 ## Train
 
-**Stage 1: backbone** (cross-speaker training, 30k steps, from `warmstart.pth.tar`)
+**Stage 1: backbone** (cross-speaker training, 30k steps, warm-started from a pretrained multi-speaker checkpoint)
 ```bash
 bash jobs/train.sh 0          # arg = GPU id; checkpoints -> output/ckpt/MEAD/
 ```
-**Stage 2: refinement module** on the frozen backbone (20k steps; the released
-refinement checkpoint is step 15k)
+**Stage 2: refinement module** on the frozen backbone (20k steps; the 15k
+checkpoint is used)
 ```bash
 BACKBONE=output/ckpt/MEAD/30000.pth.tar bash jobs/train_intensity.sh 0   # -> output/ckpt/MEAD_intensity/
 ```
@@ -163,7 +164,7 @@ mode (expected level from the face head, `--predict_level_expected --pf_ramp`).
 
 ## Preparing MEAD from scratch
 
-`data/MEAD/` on the Drive is ready to use. To rebuild it from MEAD:
+To build `data/MEAD/` from MEAD:
 
 1. Extract per-utterance wavs and a frontal face frame per utterance into
    `data/MEAD_corpus/` as `<speaker>_<emotion>_<level>_<index>.wav` with a

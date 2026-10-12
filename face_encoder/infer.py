@@ -1,5 +1,5 @@
 """
-Inference wrapper for the released face-to-emotion encoder checkpoint.
+Inference wrapper for the face-to-emotion encoder checkpoint.
 
 Loads face_encoder.pt (keys: model_config, model_state, epoch, val_loss) and
 returns L2-normalized emotion embeddings for face images.
@@ -22,7 +22,7 @@ try:
 except ImportError:  # run from inside face_encoder/
     from model import FaceEmotionEncoder
 
-# label indices used by the released checkpoint's classification heads
+# label indices used by the checkpoint's classification heads
 EMOTION_MAP = {
     "angry": 0,
     "disgusted": 1,

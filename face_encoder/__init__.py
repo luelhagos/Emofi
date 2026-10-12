@@ -1,1 +1,1 @@
-"""Inference code for the released face-to-emotion encoder checkpoint."""
+"""Inference code for the face-to-emotion encoder checkpoint."""

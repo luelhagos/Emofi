@@ -8,7 +8,7 @@ after erasure, and the mean relative perturbation. Optionally writes the erased
 embeddings as a new cache (L2-normalized, same <stem>.pt layout).
 
 Mode A reads a precomputed cache (--face_emb_cache). Mode B computes embeddings
-from the released face encoder (--checkpoint + --filelist_dir).
+from the trained face encoder (--checkpoint + --filelist_dir).
 
 Usage:
     python3 scripts/leace_disentangle.py \

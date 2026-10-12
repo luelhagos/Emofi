@@ -167,7 +167,7 @@ def main(args, configs):
     if WANDB_AVAILABLE and os.environ.get("WANDB_PROJECT"):
         wandb_run = wandb.init(
             project=os.environ["WANDB_PROJECT"],
-            name=os.environ.get("WANDB_RUN_NAME", "trivox"),
+            name=os.environ.get("WANDB_RUN_NAME", "emofi"),
             config={
                 "preprocess_config": preprocess_config,
                 "model_config":      model_config,

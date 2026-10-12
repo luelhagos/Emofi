@@ -3,7 +3,7 @@ Face-to-emotion encoder architecture.
 
 Maps a face image to an emotion embedding in the emotion2vec space, with
 auxiliary heads for emotion and intensity classification. Only the class
-definition is needed to load the released checkpoint (face_encoder.pt).
+definition is needed to load the trained checkpoint (face_encoder.pt).
 """
 
 import torch

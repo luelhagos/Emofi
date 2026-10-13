@@ -7,6 +7,7 @@ linearly-projected style vector on a FastSpeech2 / Meta-StyleSpeech backbone; an
 intensity-conditioned refinement module trained by SER feature matching restores
 graded intensity; HiFi-GAN vocodes the result.
 
+For checkpoints and processed data, check this link: https://drive.google.com/drive/folders/1AMTuWvHln3T7sZAgLrt_7k8rKNE9Gm5n?usp=drive_link
 
 ## Repository layout
 

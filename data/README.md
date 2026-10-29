@@ -1,6 +1,7 @@
 # data/
 
-Data is not distributed with this repository yet. The code expects two folders here:
+Download the data package from the gated Hugging Face dataset repository
+`luel/emofi-mead` (see the top-level README). The code expects two folders here:
 
 - `data/MEAD/`            preprocessed training data: `mel/ pitch/ energy/ duration/
                           face_emb_cache/ spk_emb_cache/ speakers.json stats.json

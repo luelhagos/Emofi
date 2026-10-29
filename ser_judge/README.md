@@ -12,8 +12,9 @@ The judge depends on `transformers` (Wav2Vec2).
 pip install -r ser_judge/requirements.txt
 ```
 
-The judge weights are not distributed with this repository yet. The code expects
-them at `ser_judge/best_model.pt`.
+Download `best_model.pt` from the Hugging Face model repository
+(`huggingface-cli download luel/emofi-tts best_model.pt --local-dir ser_judge`);
+the code expects it at `ser_judge/best_model.pt`.
 
 ## Run
 

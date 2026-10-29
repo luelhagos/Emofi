@@ -1,13 +1,20 @@
-# Emofi-TTS
+# EmoFI-TTS
 
-Face-conditioned emotional text-to-speech with disentangled control: a **face
-image** drives the emotion and its intensity, a **reference utterance** drives the
-speaker identity, and **text** drives the content. The three inputs meet in a single
-linearly-projected style vector on a FastSpeech2 / Meta-StyleSpeech backbone; an
-intensity-conditioned refinement module trained by SER feature matching restores
-graded intensity; HiFi-GAN vocodes the result.
+Face-conditioned emotional text-to-speech with disentangled control. A single
+**face image** sets the emotion and its intensity, a **reference utterance** sets
+the speaker identity, and **text** sets the content. The face and speaker
+embeddings meet only in one linearly projected style vector that conditions a
+FastSpeech2 / Meta-StyleSpeech backbone; an intensity-conditioned refinement
+module, trained by feature matching against a frozen speech encoder, restores
+the graded intensity that regression decoders smooth away; HiFi-GAN produces the
+waveform.
 
-For checkpoints and processed data, check this link: https://drive.google.com/drive/folders/1AMTuWvHln3T7sZAgLrt_7k8rKNE9Gm5n?usp=drive_link
+This repository contains the full system described in the paper: both training
+stages, synthesis in the discrete and continuous-intensity modes, and every
+evaluation behind the reported results. Pretrained weights and the preprocessed
+data are hosted on the Hugging Face Hub (see [Models and data](#2-models-and-data)).
+
+**Paper:** [EmoFI-TTS: Face-Conditioned Expressive Voice Synthesis with Intensity Modulation](https://arxiv.org/abs/2610.30477) (arXiv:2610.30477, 2026). See [Citation](#citation).
 
 ## Repository layout
 
@@ -23,7 +30,7 @@ model/            StyleSpeech backbone (SALN), variance adaptor, losses,
                   postfilter.py (refinement module + mel discriminators), serfm.py (SER feature matching)
 utils/            checkpoint & vocoder loading (model.py); tensors / masks (tools.py)
 text/             text front end (phoneme symbols, text-to-sequence; the symbol table is fixed by the trained checkpoints)
-hifigan/          HiFi-GAN vocoder code (generator weights are not included)
+hifigan/          HiFi-GAN vocoder code
 lexicon/          grapheme-to-phoneme lexicon (only needed to phonemize new free-form text)
 face_encoder/     face encoder model definition + inference (see face_encoder/README.md)
 ser_judge/        Wav2Vec2 SER judge -> emotion + intensity WA/UA/per-level recall (own env; see ser_judge/README.md)
@@ -59,36 +66,60 @@ scripts/          synthesis
 
 ## Setup
 
-**1. Environment**
+### 1. Environment
+
 ```bash
 pip install -r requirements.txt
 ```
 The SER judge runs in its own environment (`ser_judge/requirements.txt`).
 
-**2. Models and data.** Pretrained checkpoints and the preprocessed MEAD package are
-not distributed with this repository yet; they will be released with the paper. The
-code expects:
+### 2. Models and data
+
+Weights are in the model repository
+[`luel/emofi-tts`](https://huggingface.co/luel/emofi-tts); the
+preprocessed MEAD package is in the gated dataset repository
+[`luel/emofi-mead`](https://huggingface.co/datasets/luel/emofi-mead)
+(accept the MEAD research-use terms once on the Hub, then log in with
+`huggingface-cli login`). Download everything into place with:
+
+```bash
+pip install -U huggingface_hub
+huggingface-cli download luel/emofi-tts  warmstart.pth.tar          --local-dir output/ckpt/pretrained
+huggingface-cli download luel/emofi-tts  backbone_30000.pth.tar     --local-dir output/ckpt/MEAD
+huggingface-cli download luel/emofi-tts  refinement_15000.pth.tar   --local-dir output/ckpt/MEAD_intensity
+huggingface-cli download luel/emofi-tts  generator_universal.pth.tar --local-dir hifigan
+huggingface-cli download luel/emofi-tts  face_encoder.pt            --local-dir face_encoder
+huggingface-cli download luel/emofi-tts  best_model.pt              --local-dir ser_judge
+huggingface-cli download luel/emofi-mead --repo-type dataset --local-dir data
+(cd data && unzip -q MEAD_features.zip && unzip -q MEAD_test_wavs.zip && mv MEAD_v23 MEAD && mv gt_test_wavs_v23 MEAD_processed)
+mv output/ckpt/MEAD/backbone_30000.pth.tar output/ckpt/MEAD/30000.pth.tar
+mv output/ckpt/MEAD_intensity/refinement_15000.pth.tar output/ckpt/MEAD_intensity/15000.pth.tar
+```
+
+Checkpoints are loaded as `<ckpt_path>/<step>.pth.tar`, so the two system
+checkpoints are renamed to their training step. The resulting layout:
 
 | Path | Contents |
 |---|---|
 | `data/MEAD/` | preprocessed features (mel, pitch, energy, duration), cached face + speaker embeddings, manifests, `stats.json` |
-| `data/MEAD_processed/` | real test wavs (real-audio ceilings; reference clips) |
-| `output/ckpt/pretrained/warmstart.pth.tar` | warm start for `jobs/train.sh` |
-| `output/ckpt/MEAD/<step>.pth.tar` | backbone checkpoints (written by `jobs/train.sh`) |
-| `output/ckpt/MEAD_intensity/<step>.pth.tar` | refinement checkpoints (written by `jobs/train_intensity.sh`) |
+| `data/MEAD_processed/` | the 2,650 real test utterances (real-audio ceilings; swap-test reference clips) |
+| `data/MEAD_corpus.zip` | all per-utterance wavs with their original transcripts; only needed to rebuild the features from scratch |
+| `output/ckpt/pretrained/warmstart.pth.tar` | backbone before the cross-speaker stage; warm start for `jobs/train.sh` |
+| `output/ckpt/MEAD/30000.pth.tar` | released backbone (after the cross-speaker stage); start point for `jobs/train_intensity.sh` |
+| `output/ckpt/MEAD_intensity/15000.pth.tar` | released full system (backbone + refinement module) |
 | `hifigan/generator_universal.pth.tar` | HiFi-GAN vocoder weights |
 | `face_encoder/face_encoder.pt` | face encoder weights (only needed to embed new face images) |
 | `ser_judge/best_model.pt` | SER judge weights (evaluation only) |
 
-With the embedding caches inside `data/MEAD/`, neither encoder is needed to train or
-evaluate on MEAD.
+With the embedding caches inside `data/MEAD/`, neither encoder is needed to train
+or evaluate on MEAD.
 
 
-## Evaluate a trained system
+## Evaluate the released system
 
-Synthesize the test set with a trained system in the image-only condition
-(emotion and intensity level both predicted from the face), then score it.
-`OUT` is any directory for the synthesized wavs.
+Synthesize the test set in the image-only condition (emotion and intensity level
+both predicted from the face), then score it. `OUT` is any directory for the
+synthesized wavs.
 
 ```bash
 OUT=<output_dir>
@@ -128,12 +159,12 @@ the reference's emotion label for the factorization test.
 
 ## Train
 
-**Stage 1: backbone** (cross-speaker training, 30k steps, warm-started from a pretrained multi-speaker checkpoint)
+**Stage 1: backbone** (cross-speaker training, 30k steps, from `warmstart.pth.tar`)
 ```bash
 bash jobs/train.sh 0          # arg = GPU id; checkpoints -> output/ckpt/MEAD/
 ```
-**Stage 2: refinement module** on the frozen backbone (20k steps; the 15k
-checkpoint is used)
+**Stage 2: refinement module** on the frozen backbone (20k steps; the released
+system uses the 15k checkpoint)
 ```bash
 BACKBONE=output/ckpt/MEAD/30000.pth.tar bash jobs/train_intensity.sh 0   # -> output/ckpt/MEAD_intensity/
 ```
@@ -165,11 +196,12 @@ mode (expected level from the face head, `--predict_level_expected --pf_ramp`).
 
 ## Preparing MEAD from scratch
 
-To build `data/MEAD/` from MEAD:
+`data/MEAD/` from the dataset repository is ready to use. To rebuild it, start
+from `MEAD_corpus.zip` (per-utterance wavs and their original transcripts):
 
-1. Extract per-utterance wavs and a frontal face frame per utterance into
-   `data/MEAD_corpus/` as `<speaker>_<emotion>_<level>_<index>.wav` with a
-   transcript `<utt>_CorrectedTranscript.txt` beside each wav.
+1. Unzip the corpus to `data/MEAD_corpus/` (`<speaker>_<emotion>_<level>_<index>.wav`
+   with a `<utt>_CorrectedTranscript.txt` beside each wav) and add one frontal face
+   frame per utterance.
 2. Stage the wavs and transcripts for forced alignment, then run the Montreal
    Forced Aligner and place its TextGrids under `data/MEAD/TextGrid/`:
    ```bash
@@ -181,9 +213,54 @@ To build `data/MEAD/` from MEAD:
    ```bash
    python3 preprocess.py config/MEAD/preprocess.yaml
    ```
-4. Repair the transcripts if the source transcripts are ASR-generated
-   (`match_canonical.py` -> `whisper_verify.py` -> `prepare_realign.py`, then
-   re-align and re-run step 3 with the corrected text).
+4. Repair the transcripts: the shipped transcripts are ASR-generated and partly
+   incomplete (`match_canonical.py` -> `whisper_verify.py` -> `prepare_realign.py`,
+   then re-align and re-run step 3 with the corrected text).
 5. Cache the embeddings: `scripts/cache_face_embeddings.py` (needs
    `face_encoder/face_encoder.pt`) and `scripts/cache_speaker_embeddings.py`
    (ECAPA-TDNN via SpeechBrain).
+
+
+## Pretrained components
+
+The system builds on publicly available models, all used frozen:
+[ECAPA-TDNN](https://huggingface.co/speechbrain/spkrec-ecapa-voxceleb) (speaker
+embeddings), [emotion2vec](https://github.com/ddlBoJack/emotion2vec) (face-encoder
+distillation target and independent emotion judge),
+[wav2vec 2.0](https://huggingface.co/facebook/wav2vec2-base) (feature-matching
+loss), [HiFi-GAN](https://github.com/jik876/hifi-gan) (vocoder),
+[Whisper](https://github.com/openai/whisper) (word error rate),
+[UTMOS](https://github.com/tarepan/SpeechMOS) (naturalness), and
+[Resemblyzer](https://github.com/resemble-ai/Resemblyzer) (speaker similarity).
+
+
+## Acknowledgements
+
+The backbone code derives from the public
+[Meta-StyleSpeech](https://github.com/KevinMIN95/StyleSpeech) and
+[FastSpeech2](https://github.com/ming024/FastSpeech2) implementations, and the
+text front end from [Tacotron](https://github.com/keithito/tacotron). The face
+encoder (`face_encoder/`) and the speech-emotion judge (`ser_judge/`) were
+developed by Yejin Jeon, and are included with permission.
+[MEAD](https://wywu.github.io/projects/MEAD/MEAD.html) is used under its
+research license; the preprocessed package is distributed under the same terms.
+
+
+## License
+
+The code in this repository is released under the MIT License (see `LICENSE`).
+Model weights are released for research use; the MEAD-derived data package
+follows the MEAD license.
+
+
+## Citation
+
+```bibtex
+@article{jeon2026emofi,
+  title   = {EmoFI-TTS: Face-Conditioned Expressive Voice Synthesis with Intensity Modulation},
+  author  = {Jeon, Yejin and Beyene, Luel H. and Maltais, Marie and Kim, Hyounghun and Adelani, David I.},
+  journal = {arXiv preprint arXiv:2610.30477},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/2610.30477}
+}
+```

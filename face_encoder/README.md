@@ -10,8 +10,9 @@ model definition and inference code only. Training code is not included.
 
 ## Checkpoint
 
-The encoder weights are not distributed with this repository yet. The code
-expects them at:
+Download `face_encoder.pt` from the Hugging Face model repository
+(`huggingface-cli download luel/emofi-tts face_encoder.pt --local-dir face_encoder`);
+the code expects it at:
 
 ```
 face_encoder/face_encoder.pt

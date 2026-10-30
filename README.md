@@ -45,8 +45,8 @@ The speech-emotion judge used for evaluation runs in its own environment
 
 Weights are in the model repository `luel/emofi-tts`. The preprocessed MEAD
 package is in the gated dataset repository `luel/emofi-mead`: accept the MEAD
-research-use terms once on the Hub, then log in with `hf auth login`. Download
-everything into place with:
+research-use terms once on the Hub, then log in with `hf auth login`. From the
+repository root, download everything into place with:
 
 ```bash
 pip install -U huggingface_hub
@@ -63,7 +63,9 @@ mv output/ckpt/MEAD_intensity/refinement_15000.pth.tar output/ckpt/MEAD_intensit
 ```
 
 Checkpoints are loaded as `<ckpt_path>/<step>.pth.tar`, so the two system
-checkpoints are renamed to their training step. The resulting layout:
+checkpoints are renamed to their training step. Extracting the features package
+writes about 200k small files and can take 10 to 20 minutes on a network
+filesystem. The resulting layout:
 
 | Path | Contents |
 |---|---|

@@ -74,7 +74,7 @@ checkpoints are renamed to their training step. The resulting layout:
 | `face_encoder/face_encoder.pt` | face encoder weights (only needed to embed new face images) |
 | `ser_judge/best_model.pt` | speech-emotion judge weights (evaluation only) |
 | `data/MEAD/` | preprocessed features (mel, pitch, energy, duration), cached face + speaker embeddings, manifests, `stats.json` |
-| `data/MEAD_processed/` | the 2,650 real test utterances (real-audio ceilings; swap-test reference clips) |
+| `data/MEAD_processed/` | the real test utterances (real-audio ceilings; swap-test reference clips) |
 | `data/MEAD_corpus.zip` | all per-utterance wavs with their original transcripts; only needed to rebuild the features from scratch |
 
 Face and speaker embeddings are cached inside `data/MEAD/`, so neither encoder

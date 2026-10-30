@@ -11,86 +11,52 @@ waveform.
 
 This repository contains the full system described in the paper: both training
 stages, synthesis in the discrete and continuous-intensity modes, and every
-evaluation behind the reported results. Pretrained weights and the preprocessed
-data are hosted on the Hugging Face Hub (see [Models and data](#2-models-and-data)).
+evaluation behind the reported results.
 
-**Paper:** [EmoFI-TTS: Face-Conditioned Expressive Voice Synthesis with Intensity Modulation](https://arxiv.org/abs/2610.30477) (arXiv:2610.30477, 2026). See [Citation](#citation).
+- **Paper:** [EmoFI-TTS: Face-Conditioned Expressive Voice Synthesis with Intensity Modulation](https://arxiv.org/abs/2610.30477) (arXiv:2610.30477, 2026)
+- **Weights:** [luel/emofi-tts](https://huggingface.co/luel/emofi-tts) on the Hugging Face Hub
+- **Data:** [luel/emofi-mead](https://huggingface.co/datasets/luel/emofi-mead), preprocessed MEAD (gated, research use)
 
-## Repository layout
-
-```
-train.py          training entry point (backbone stage and refinement stage)
-dataset.py        data loader: mels / pitch / energy / durations + cached face & speaker embeddings,
-                  cross-speaker face sampling
-evaluate.py       validation loop run periodically during training
-prepare_align.py  stage MEAD wavs + transcripts for forced alignment
-preprocess.py     extract mels / pitch / energy / durations from the aligned data (preprocessor/, audio/)
-
-model/            StyleSpeech backbone (SALN), variance adaptor, losses,
-                  postfilter.py (refinement module + mel discriminators), serfm.py (SER feature matching)
-utils/            checkpoint & vocoder loading (model.py); tensors / masks (tools.py)
-text/             text front end (phoneme symbols, text-to-sequence; the symbol table is fixed by the trained checkpoints)
-hifigan/          HiFi-GAN vocoder code
-lexicon/          grapheme-to-phoneme lexicon (only needed to phonemize new free-form text)
-face_encoder/     face encoder model definition + inference (see face_encoder/README.md)
-ser_judge/        Wav2Vec2 SER judge -> emotion + intensity WA/UA/per-level recall (own env; see ser_judge/README.md)
-
-config/MEAD/      preprocess.yaml (data & features); model.yaml + train.yaml (backbone);
-                  model_intensity.yaml + train_intensity.yaml (refinement stage)
-jobs/             one-command runners: train.sh, train_intensity.sh, eval.sh, eval_intensity.sh
-
-scripts/          synthesis
-                    synthesize_test_set.py     synthesize the test set (refinement / level flags)
-                    synthesize_swap_test.py    cross-identity swap synthesis (+ --zero_face / --zero_ref controls)
-                  evaluation
-                    eval_wer.py                Whisper-large WER / CER (jiwer)
-                    eval_emotion2vec.py        emotion2vec emotion WA/UA (independent judge)
-                    eval_utmos.py              UTMOS naturalness predictor
-                    eval_arousal.py            continuous arousal (dimensional judge) + per-level range
-                    speaker_transfer_probe.py  speaker transfer % on swap outputs (ECAPA nearest-centroid)
-                    eval_speaker_similarity.py speaker similarity to the real recording (Resemblyzer cosine) + real-pair anchors
-                    check_ref_arousal_bleed.py reference-arousal leakage r on swap outputs
-                    eval_intensity_probe.py    held-out intensity judge (WavLM probe fit on real audio only)
-                  embeddings / disentanglement
-                    cache_face_embeddings.py   face image -> 768-d embedding cache (uses face_encoder/)
-                    cache_speaker_embeddings.py reference wav -> 192-d ECAPA embedding cache
-                    leace_disentangle.py       LEACE speaker erasure on face embeddings + linear/MLP probes
-                    probe_ref_emotion_leak.py  emotion probes on ECAPA embeddings + category erasure
-                    leace_arousal_strip.py     continuous-arousal erasure on ECAPA embeddings
-                  data preparation
-                    match_canonical.py         content-match transcripts to MEAD's canonical sentence list
-                    whisper_verify.py          confirm uncertain matches with Whisper-large on the raw audio
-                    prepare_realign.py         write corrected transcripts for forced re-alignment
-```
+**Contents:**
+[Installation](#installation) |
+[Models and data](#models-and-data) |
+[Synthesize and evaluate](#synthesize-and-evaluate) |
+[Train](#train) |
+[Further evaluations](#further-evaluations) |
+[Preparing MEAD from scratch](#preparing-mead-from-scratch) |
+[Repository layout](#repository-layout) |
+[Pretrained components](#pretrained-components) |
+[Citation](#citation)
 
 
-## Setup
-
-### 1. Environment
+## Installation
 
 ```bash
+git clone https://github.com/luelhagos/Emofi.git
+cd Emofi
 pip install -r requirements.txt
 ```
-The SER judge runs in its own environment (`ser_judge/requirements.txt`).
 
-### 2. Models and data
+The speech-emotion judge used for evaluation runs in its own environment
+(`ser_judge/requirements.txt`, see `ser_judge/README.md`).
 
-Weights are in the model repository
-[`luel/emofi-tts`](https://huggingface.co/luel/emofi-tts); the
-preprocessed MEAD package is in the gated dataset repository
-[`luel/emofi-mead`](https://huggingface.co/datasets/luel/emofi-mead)
-(accept the MEAD research-use terms once on the Hub, then log in with
-`huggingface-cli login`). Download everything into place with:
+
+## Models and data
+
+Weights are in the model repository `luel/emofi-tts`. The preprocessed MEAD
+package is in the gated dataset repository `luel/emofi-mead`: accept the MEAD
+research-use terms once on the Hub, then log in with `hf auth login`. Download
+everything into place with:
 
 ```bash
 pip install -U huggingface_hub
-huggingface-cli download luel/emofi-tts  warmstart.pth.tar          --local-dir output/ckpt/pretrained
-huggingface-cli download luel/emofi-tts  backbone_30000.pth.tar     --local-dir output/ckpt/MEAD
-huggingface-cli download luel/emofi-tts  refinement_15000.pth.tar   --local-dir output/ckpt/MEAD_intensity
-huggingface-cli download luel/emofi-tts  generator_universal.pth.tar --local-dir hifigan
-huggingface-cli download luel/emofi-tts  face_encoder.pt            --local-dir face_encoder
-huggingface-cli download luel/emofi-tts  best_model.pt              --local-dir ser_judge
-huggingface-cli download luel/emofi-mead --repo-type dataset --local-dir data
+hf download luel/emofi-tts  warmstart.pth.tar           --local-dir output/ckpt/pretrained
+hf download luel/emofi-tts  backbone_30000.pth.tar      --local-dir output/ckpt/MEAD
+hf download luel/emofi-tts  refinement_15000.pth.tar    --local-dir output/ckpt/MEAD_intensity
+hf download luel/emofi-tts  generator_universal.pth.tar --local-dir hifigan
+hf download luel/emofi-tts  face_encoder.pt             --local-dir face_encoder
+hf download luel/emofi-tts  best_model.pt               --local-dir ser_judge
+hf download luel/emofi-mead --repo-type dataset         --local-dir data
 (cd data && unzip -q MEAD_features.zip && unzip -q MEAD_test_wavs.zip && mv MEAD_v23 MEAD && mv gt_test_wavs_v23 MEAD_processed)
 mv output/ckpt/MEAD/backbone_30000.pth.tar output/ckpt/MEAD/30000.pth.tar
 mv output/ckpt/MEAD_intensity/refinement_15000.pth.tar output/ckpt/MEAD_intensity/15000.pth.tar
@@ -101,25 +67,25 @@ checkpoints are renamed to their training step. The resulting layout:
 
 | Path | Contents |
 |---|---|
+| `output/ckpt/MEAD_intensity/15000.pth.tar` | released full system (backbone + refinement module) |
+| `output/ckpt/MEAD/30000.pth.tar` | released backbone (after the cross-speaker stage); start point for `jobs/train_intensity.sh` |
+| `output/ckpt/pretrained/warmstart.pth.tar` | backbone before the cross-speaker stage; warm start for `jobs/train.sh` |
+| `hifigan/generator_universal.pth.tar` | HiFi-GAN vocoder weights |
+| `face_encoder/face_encoder.pt` | face encoder weights (only needed to embed new face images) |
+| `ser_judge/best_model.pt` | speech-emotion judge weights (evaluation only) |
 | `data/MEAD/` | preprocessed features (mel, pitch, energy, duration), cached face + speaker embeddings, manifests, `stats.json` |
 | `data/MEAD_processed/` | the 2,650 real test utterances (real-audio ceilings; swap-test reference clips) |
 | `data/MEAD_corpus.zip` | all per-utterance wavs with their original transcripts; only needed to rebuild the features from scratch |
-| `output/ckpt/pretrained/warmstart.pth.tar` | backbone before the cross-speaker stage; warm start for `jobs/train.sh` |
-| `output/ckpt/MEAD/30000.pth.tar` | released backbone (after the cross-speaker stage); start point for `jobs/train_intensity.sh` |
-| `output/ckpt/MEAD_intensity/15000.pth.tar` | released full system (backbone + refinement module) |
-| `hifigan/generator_universal.pth.tar` | HiFi-GAN vocoder weights |
-| `face_encoder/face_encoder.pt` | face encoder weights (only needed to embed new face images) |
-| `ser_judge/best_model.pt` | SER judge weights (evaluation only) |
 
-With the embedding caches inside `data/MEAD/`, neither encoder is needed to train
-or evaluate on MEAD.
+Face and speaker embeddings are cached inside `data/MEAD/`, so neither encoder
+is needed to train or evaluate on MEAD.
 
 
-## Evaluate the released system
+## Synthesize and evaluate
 
-Synthesize the test set in the image-only condition (emotion and intensity level
-both predicted from the face), then score it. `OUT` is any directory for the
-synthesized wavs.
+Synthesize the test set with the released system in the image-only condition
+(emotion and intensity level both predicted from the face), then score it.
+`OUT` is any directory for the synthesized wavs.
 
 ```bash
 OUT=<output_dir>
@@ -133,16 +99,19 @@ python3 scripts/synthesize_test_set.py --restore_step 15000 \
 
 # 2. score
 python3 ser_judge/evaluate_synthesized.py --checkpoint ser_judge/best_model.pt \
-    --wav_dir $OUT --output_txt $OUT/ser.txt        # emotion WA + intensity WA/UA + L1/L2/L3 (SER-judge env)
+    --wav_dir $OUT --output_txt $OUT/ser.txt        # emotion WA + intensity WA/UA + L1/L2/L3 (judge env)
 python3 scripts/eval_wer.py   --wav_dir $OUT --manifest data/MEAD/test.txt --out_txt $OUT/wer.txt
 python3 scripts/eval_utmos.py --wav_dirs $OUT --out_tsv $OUT/utmos.tsv
 python3 scripts/eval_emotion2vec.py --real_dir data/MEAD_processed --manifest data/MEAD/test.txt \
     --synth_dirs $OUT --out_txt $OUT/e2v.txt
 ```
+
 Score the real test audio (`data/MEAD_processed`) with the same commands to obtain
 the reference ceilings for each metric.
 
-Speaker transfer (cross-identity swaps):
+**Speaker transfer** (cross-identity swaps: the face from one speaker, the
+reference utterance from another):
+
 ```bash
 SWAP=<swap_output_dir>
 python3 scripts/synthesize_swap_test.py --restore_step 15000 \
@@ -152,22 +121,28 @@ python3 scripts/synthesize_swap_test.py --restore_step 15000 \
 python3 scripts/speaker_transfer_probe.py --swap_dir $SWAP \
     --pairs ${SWAP}_pairs.txt --real_dir data/MEAD_processed
 ```
+
 Add `--zero_face` or `--zero_ref` to the swap synthesis for the input-ablation
-controls; score the swap outputs with the SER judge against both the face's and
-the reference's emotion label for the factorization test.
+controls. For the factorization test, score the swap outputs with the
+speech-emotion judge against both the face's and the reference's emotion label.
 
 
 ## Train
 
-**Stage 1: backbone** (cross-speaker training, 30k steps, from `warmstart.pth.tar`)
+**Stage 1: backbone.** Cross-speaker training for 30k steps, warm-started from
+`warmstart.pth.tar`:
+
 ```bash
 bash jobs/train.sh 0          # arg = GPU id; checkpoints -> output/ckpt/MEAD/
 ```
-**Stage 2: refinement module** on the frozen backbone (20k steps; the released
-system uses the 15k checkpoint)
+
+**Stage 2: refinement module.** Trained on the frozen backbone for 20k steps;
+the released system uses the 15k checkpoint:
+
 ```bash
 BACKBONE=output/ckpt/MEAD/30000.pth.tar bash jobs/train_intensity.sh 0   # -> output/ckpt/MEAD_intensity/
 ```
+
 Quick evaluation of your own checkpoints: `STEP=30000 bash jobs/eval.sh 0`
 (backbone: WER + emotion2vec) and `STEP=15000 PREDICT_LEVEL=1 bash jobs/eval_intensity.sh 0`
 (refinement, image-only: SER + WER). `PREDICT_LEVEL=2` runs the fully continuous
@@ -219,6 +194,54 @@ from `MEAD_corpus.zip` (per-utterance wavs and their original transcripts):
 5. Cache the embeddings: `scripts/cache_face_embeddings.py` (needs
    `face_encoder/face_encoder.pt`) and `scripts/cache_speaker_embeddings.py`
    (ECAPA-TDNN via SpeechBrain).
+
+
+## Repository layout
+
+```
+train.py          training entry point (backbone stage and refinement stage)
+dataset.py        data loader: mels / pitch / energy / durations + cached face & speaker embeddings,
+                  cross-speaker face sampling
+evaluate.py       validation loop run periodically during training
+prepare_align.py  stage MEAD wavs + transcripts for forced alignment
+preprocess.py     extract mels / pitch / energy / durations from the aligned data (preprocessor/, audio/)
+
+model/            StyleSpeech backbone (SALN), variance adaptor, losses,
+                  postfilter.py (refinement module + mel discriminators), serfm.py (SER feature matching)
+utils/            checkpoint & vocoder loading (model.py); tensors / masks (tools.py)
+text/             text front end (phoneme symbols, text-to-sequence; the symbol table is fixed by the trained checkpoints)
+hifigan/          HiFi-GAN vocoder code
+lexicon/          grapheme-to-phoneme lexicon (only needed to phonemize new free-form text)
+face_encoder/     face encoder model definition + inference (see face_encoder/README.md)
+ser_judge/        Wav2Vec2 SER judge -> emotion + intensity WA/UA/per-level recall (own env; see ser_judge/README.md)
+
+config/MEAD/      preprocess.yaml (data & features); model.yaml + train.yaml (backbone);
+                  model_intensity.yaml + train_intensity.yaml (refinement stage)
+jobs/             one-command runners: train.sh, train_intensity.sh, eval.sh, eval_intensity.sh
+
+scripts/          synthesis
+                    synthesize_test_set.py     synthesize the test set (refinement / level flags)
+                    synthesize_swap_test.py    cross-identity swap synthesis (+ --zero_face / --zero_ref controls)
+                  evaluation
+                    eval_wer.py                Whisper-large WER / CER (jiwer)
+                    eval_emotion2vec.py        emotion2vec emotion WA/UA (independent judge)
+                    eval_utmos.py              UTMOS naturalness predictor
+                    eval_arousal.py            continuous arousal (dimensional judge) + per-level range
+                    speaker_transfer_probe.py  speaker transfer % on swap outputs (ECAPA nearest-centroid)
+                    eval_speaker_similarity.py speaker similarity to the real recording (Resemblyzer cosine) + real-pair anchors
+                    check_ref_arousal_bleed.py reference-arousal leakage r on swap outputs
+                    eval_intensity_probe.py    held-out intensity judge (WavLM probe fit on real audio only)
+                  embeddings / disentanglement
+                    cache_face_embeddings.py   face image -> 768-d embedding cache (uses face_encoder/)
+                    cache_speaker_embeddings.py reference wav -> 192-d ECAPA embedding cache
+                    leace_disentangle.py       LEACE speaker erasure on face embeddings + linear/MLP probes
+                    probe_ref_emotion_leak.py  emotion probes on ECAPA embeddings + category erasure
+                    leace_arousal_strip.py     continuous-arousal erasure on ECAPA embeddings
+                  data preparation
+                    match_canonical.py         content-match transcripts to MEAD's canonical sentence list
+                    whisper_verify.py          confirm uncertain matches with Whisper-large on the raw audio
+                    prepare_realign.py         write corrected transcripts for forced re-alignment
+```
 
 
 ## Pretrained components

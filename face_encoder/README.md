@@ -11,7 +11,7 @@ model definition and inference code only. Training code is not included.
 ## Checkpoint
 
 Download `face_encoder.pt` from the Hugging Face model repository
-(`huggingface-cli download luel/emofi-tts face_encoder.pt --local-dir face_encoder`);
+(`hf download luel/emofi-tts face_encoder.pt --local-dir face_encoder`);
 the code expects it at:
 
 ```

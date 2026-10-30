@@ -13,7 +13,7 @@ pip install -r ser_judge/requirements.txt
 ```
 
 Download `best_model.pt` from the Hugging Face model repository
-(`huggingface-cli download luel/emofi-tts best_model.pt --local-dir ser_judge`);
+(`hf download luel/emofi-tts best_model.pt --local-dir ser_judge`);
 the code expects it at `ser_judge/best_model.pt`.
 
 ## Run

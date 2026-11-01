@@ -267,7 +267,7 @@ The backbone code derives from the public
 text front end from [Tacotron](https://github.com/keithito/tacotron). The face
 encoder (`face_encoder/`) and the speech-emotion judge (`ser_judge/`) were
 developed by Yejin Jeon, and are included with permission.
-[MEAD](https://wywu.github.io/projects/MEAD/MEAD.html) is used under its
+[MEAD](https://github.com/uniBruce/Mead) is used under its
 research license; the preprocessed package is distributed under the same terms.
 
 

@@ -1,21 +1,12 @@
 # EmoFI-TTS
 
-Face-conditioned emotional text-to-speech with disentangled control. A single
-**face image** sets the emotion and its intensity, a **reference utterance** sets
-the speaker identity, and **text** sets the content. The face and speaker
-embeddings meet only in one linearly projected style vector that conditions a
-FastSpeech2 / Meta-StyleSpeech backbone; an intensity-conditioned refinement
-module, trained by feature matching against a frozen speech encoder, restores
-the graded intensity that regression decoders smooth away; HiFi-GAN produces the
-waveform.
+Face-conditioned emotional text-to-speech with disentangled control. A single **face image** sets the emotion and its intensity, a **reference utterance** sets the speaker identity, and **text** sets the content. The face and speaker embeddings meet only in one linearly projected style vector that conditions a FastSpeech2 / Meta-StyleSpeech backbone; an intensity-conditioned refinement module, trained by feature matching against a frozen speech encoder, restores the graded intensity that regression decoders smooth away; HiFi-GAN produces the waveform.
 
-This repository contains the full system described in the paper: both training
-stages, synthesis in the discrete and continuous-intensity modes, and every
-evaluation behind the reported results.
+This repository contains the full system described in the paper: both training stages, synthesis in the discrete and continuous-intensity modes, and every evaluation behind the reported results.
 
 - **Paper:** [EmoFI-TTS: Face-Conditioned Expressive Voice Synthesis with Intensity Modulation](https://arxiv.org/abs/2610.30477) (arXiv:2610.30477, 2026)
 - **Weights:** [luel/emofi-tts](https://huggingface.co/luel/emofi-tts) on the Hugging Face Hub
-- **Data:** [luel/emofi-mead](https://huggingface.co/datasets/luel/emofi-mead), preprocessed MEAD (gated, research use)
+- **Data:** [luel/emofi-mead](https://huggingface.co/datasets/luel/emofi-mead), preprocessed MEAD
 
 **Contents:**
 [Installation](#installation) |
@@ -43,10 +34,7 @@ The speech-emotion judge used for evaluation runs in its own environment
 
 ## Models and data
 
-Weights are in the model repository `luel/emofi-tts`. The preprocessed MEAD
-package is in the gated dataset repository `luel/emofi-mead`: accept the MEAD
-research-use terms once on the Hub, then log in with `hf auth login`. From the
-repository root, download everything into place with:
+Weights are in the model repository `luel/emofi-tts`. The preprocessed MEAD package is in the dataset repository `luel/emofi-mead`. From the repository root, download everything into place with:
 
 ```bash
 pip install -U huggingface_hub
@@ -62,10 +50,7 @@ mv output/ckpt/MEAD/backbone_30000.pth.tar output/ckpt/MEAD/30000.pth.tar
 mv output/ckpt/MEAD_intensity/refinement_15000.pth.tar output/ckpt/MEAD_intensity/15000.pth.tar
 ```
 
-Checkpoints are loaded as `<ckpt_path>/<step>.pth.tar`, so the two system
-checkpoints are renamed to their training step. Extracting the features package
-writes about 200k small files and can take 10 to 20 minutes on a network
-filesystem. The resulting layout:
+Checkpoints are loaded as `<ckpt_path>/<step>.pth.tar`, so the two system checkpoints are renamed to their training step. Extracting the features package writes about 200k small files and can take 10 to 20 minutes on a network filesystem. The resulting layout:
 
 | Path | Contents |
 |---|---|
@@ -85,9 +70,7 @@ is needed to train or evaluate on MEAD.
 
 ## Synthesize and evaluate
 
-Synthesize the test set with the released system in the image-only condition
-(emotion and intensity level both predicted from the face), then score it.
-`OUT` is any directory for the synthesized wavs.
+Synthesize the test set with the released system in the image-only condition (emotion and intensity level both predicted from the face), then score it. `OUT` is any directory for the synthesized wavs.
 
 ```bash
 OUT=<output_dir>
@@ -124,9 +107,7 @@ python3 scripts/speaker_transfer_probe.py --swap_dir $SWAP \
     --pairs ${SWAP}_pairs.txt --real_dir data/MEAD_processed
 ```
 
-Add `--zero_face` or `--zero_ref` to the swap synthesis for the input-ablation
-controls. For the factorization test, score the swap outputs with the
-speech-emotion judge against both the face's and the reference's emotion label.
+Add `--zero_face` or `--zero_ref` to the swap synthesis for the input-ablation controls. For the factorization test, score the swap outputs with the speech-emotion judge against both the face's and the reference's emotion label.
 
 
 ## Train
@@ -145,10 +126,7 @@ the released system uses the 15k checkpoint:
 BACKBONE=output/ckpt/MEAD/30000.pth.tar bash jobs/train_intensity.sh 0   # -> output/ckpt/MEAD_intensity/
 ```
 
-Quick evaluation of your own checkpoints: `STEP=30000 bash jobs/eval.sh 0`
-(backbone: WER + emotion2vec) and `STEP=15000 PREDICT_LEVEL=1 bash jobs/eval_intensity.sh 0`
-(refinement, image-only: SER + WER). `PREDICT_LEVEL=2` runs the fully continuous
-mode (expected level from the face head, `--predict_level_expected --pf_ramp`).
+Quick evaluation of your own checkpoints: `STEP=30000 bash jobs/eval.sh 0` (backbone: WER + emotion2vec) and `STEP=15000 PREDICT_LEVEL=1 bash jobs/eval_intensity.sh 0` (refinement, image-only: SER + WER). `PREDICT_LEVEL=2` runs the fully continuous mode (expected level from the face head, `--predict_level_expected --pf_ramp`).
 
 
 ## Further evaluations
@@ -273,9 +251,7 @@ research license; the preprocessed package is distributed under the same terms.
 
 ## License
 
-The code in this repository is released under the MIT License (see `LICENSE`).
-Model weights are released for research use; the MEAD-derived data package
-follows the MEAD license.
+The code in this repository is released under the MIT License (see `LICENSE`). Model weights are released for research use; the MEAD-derived data package follows the MEAD license.
 
 
 ## Citation

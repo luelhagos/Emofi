@@ -242,9 +242,7 @@ loss), [HiFi-GAN](https://github.com/jik876/hifi-gan) (vocoder),
 The backbone code derives from the public
 [Meta-StyleSpeech](https://github.com/KevinMIN95/StyleSpeech) and
 [FastSpeech2](https://github.com/ming024/FastSpeech2) implementations, and the
-text front end from [Tacotron](https://github.com/keithito/tacotron). The face
-encoder (`face_encoder/`) and the speech-emotion judge (`ser_judge/`) were
-developed by Yejin Jeon, and are included with permission.
+text front end from [Tacotron](https://github.com/keithito/tacotron).
 [MEAD](https://github.com/uniBruce/Mead) is used under its
 research license; the preprocessed package is distributed under the same terms.
 

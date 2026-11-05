@@ -247,7 +247,7 @@ The code in this repository is released under the MIT License (see `LICENSE`). M
 ```bibtex
 @article{jeon2026emofi,
   title   = {EmoFI-TTS: Face-Conditioned Expressive Voice Synthesis with Intensity Modulation},
-  author  = {Jeon, Yejin and Beyene, Luel Hagos and Maltais, Marie and Kim, Hyounghun and Adelani, David Ifeoluwa},
+  author  = {Jeon, Yejin and Beyene, Luel H. and Maltais, Marie and Kim, Hyounghun and Adelani, David I.},
   journal = {arXiv preprint arXiv:2610.30477},
   year    = {2026},
   url     = {https://arxiv.org/abs/2610.30477}

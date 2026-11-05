@@ -1,12 +1,12 @@
 # Face encoder (inference only)
 
-The face-to-emotion encoder maps a single face image to an emotion embedding
-that conditions the TTS model. Architecture: ResNet50 backbone + MLP projector
-to a 768-d embedding, with auxiliary emotion and intensity classification heads,
-distilled from emotion2vec (`iic/emotion2vec_plus_large`) audio embeddings.
+The face encoder maps a single face image to a 768-d embedding that conditions
+the TTS model. It is an ImageNet-pretrained ResNet-50 trained to align with
+emotion2vec audio emotion representations, jointly with auxiliary emotion and
+intensity classification heads.
 
-The encoder was developed by a project collaborator; this folder contains the
-model definition and inference code only. Training code is not included.
+This folder contains the model definition and inference code only; training
+code is not included.
 
 ## Checkpoint
 

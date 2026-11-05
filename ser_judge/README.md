@@ -1,4 +1,4 @@
-# SER judge (emotion + intensity)
+# Speech-emotion recognizer (emotion + intensity)
 
 A Wav2Vec2 speech-emotion classifier, fine-tuned on MEAD, used to score
 synthesized speech for **emotion** (6-way) and **intensity** (3-way) accuracy.
@@ -6,7 +6,7 @@ This is an evaluation tool only.
 
 ## Setup
 
-The judge depends on `transformers` (Wav2Vec2).
+The recognizer depends on `transformers` (Wav2Vec2).
 
 ```bash
 pip install -r ser_judge/requirements.txt
@@ -28,7 +28,7 @@ python ser_judge/evaluate_synthesized.py \
 Reports **Emotion WA/UA** and **Intensity WA/UA** over the wavs in `--wav_dir`.
 Filenames must be `<speaker>_<emotion>_<level>_<index>.wav` (the format produced
 by `scripts/synthesize_test_set.py`). Run it on the **real** test wavs too for the
-judge's own ceiling.
+real-audio reference.
 
 Files: `model.py` (the classifier), `dataset.py` (feature extraction + labels),
 `evaluate_synthesized.py` (the scorer).

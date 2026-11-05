@@ -21,9 +21,9 @@ optimizer:
 
 step:
   meta_learning_warmup: 9999999
-  # Postfilter stage: 20k steps on the frozen backbone, checkpoints every 5k.
+  # Refinement stage: 15k steps on the frozen backbone, checkpoints every 5k.
   # Select the checkpoint on an evaluation independent of the training loss.
-  total_step: 20000
+  total_step: 15000
   log_step: 100
   synth_step: 1000
   val_step: 1000
